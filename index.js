@@ -6,9 +6,8 @@ module.exports.startServer = function(config, onReady ,onReadyToIndex ,onError) 
 };
 
 
-if(process.env.DEV) {
-  const config = require('./config');
-  this.startServer(config);
-}
+const config = require('./config');
+this.startServer(config);
+
 
 

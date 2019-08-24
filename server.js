@@ -2,6 +2,10 @@ const http = require('http');
 const sockjs = require('sockjs');
 const zmq = require('zeromq');
 const sock = zmq.socket('sub');
+const bitcoin = require('bitcoinjs-lib');
+const utils = require('./utils');
+const SyscoinRpcClient = require("@syscoin/syscoin-js").SyscoinRpcClient;
+const rpcServices = require("@syscoin/syscoin-js").rpcServices;
 
 const TOPIC = {
   RAW_BLOCK: 'rawblock',
@@ -14,11 +18,27 @@ const TOPIC = {
   WALLET_RAW_TX: 'walletrawtx'
 };
 
+const config = {
+  host: "localhost",
+  rpcPort: 8368, // This is the port used in the docker-based integration tests, change at your peril
+  username: "7d012d9bf253183d",
+  password: "912e80993a303db807fdffb97f299531",
+  logLevel: 'error'
+};
+const client = new SyscoinRpcClient(config);
+
+
+let unconfirmedTxAddressMap = [];
+let unconfirmedTxMap = {};
+
 module.exports = {
-  startServer (config = {zmq_address: null, ws_port: null}, onReady = () => {}, onReadyToIndex = () => {}, onError = () => {}) {
+  startServer(config = {zmq_address: null, ws_port: null}, onReady = () => {
+  }, onReadyToIndex = () => {
+  }, onError = () => {
+  }) {
     console.log("ZQMSocket starting with config:", JSON.stringify(config));
 
-    if(typeof config.zmq_address !== 'string' && typeof config.ws_port !== 'number') {
+    if (typeof config.zmq_address !== 'string' && typeof config.ws_port !== 'number') {
       console.log("Bad config. Exiting.");
       process.exit(0);
     }
@@ -44,11 +64,9 @@ module.exports = {
       });
     }
 
+    sock.subscribe(TOPIC.RAW_TX);
     sock.subscribe(TOPIC.HASH_BLOCK);
-    sock.subscribe(TOPIC.WALLET_STATUS);
-    sock.subscribe(TOPIC.ETH_STATUS);
-    sock.subscribe(TOPIC.NETWORK_STATUS);
-    sock.subscribe(TOPIC.WALLET_RAW_TX);
+
 
     // create websocket server
     const echo = sockjs.createServer({prefix: '/zmq'});
@@ -64,7 +82,19 @@ module.exports = {
       });
     });
 
-    sock.on('message', (topic, message) => { handleMessage(topic, message, clientConn); });
+    sock.on('message', async (topic, message) => {
+      switch (topic.toString('utf8')) {
+        case TOPIC.RAW_TX:
+          await handleRawTxMessage(topic, message, clientConn);
+          logState();
+          break;
+
+        case TOPIC.HASH_BLOCK:
+          await handleHashBlockMessage(topic, message, clientConn);
+          logState();
+          break;
+      }
+    });
 
     const server = http.createServer();
     echo.installHandlers(server);
@@ -75,24 +105,74 @@ module.exports = {
   }
 };
 
-function handleMessage(topic, message, conn) {
+async function handleRawTxMessage(topic, message, conn) {
+  if (!process.env.DEV) {
+    console.log(topic.toString('utf8'));
+  }
+
+  let hexStr = message.toString('hex');
+  let tx = bitcoin.Transaction.fromHex(hexStr);
+
+  // get all the addresses associated w the transaction
+  let inAddresses = utils.getInputAddressesFromVins(tx.ins);
+  let outAddresses = utils.getOutputAddressesFromVouts(tx.outs);
+  let affectedAddresses = [...inAddresses, ...outAddresses].filter((value, index, self) => {
+    return self.indexOf(value) === index;
+  });
+
+  console.info('affexteed', affectedAddresses);
+
+  tx = await rpcServices(client.callRpc).decodeRawTransaction(hexStr).call();
+
+  // add tx to unconfirmed map
+  unconfirmedTxMap[tx.txid] = tx;
+
+  // map address to tx
+  affectedAddresses.forEach(address => {
+    unconfirmedTxAddressMap.push({ address, txid: tx.txid });
+  });
+
   if (conn) {
-    if (!process.env.DEV) {
-      console.log(topic.toString('utf8'));
-    }
-    let msgPayload;
-    switch (topic.toString('utf8')) {
-      case TOPIC.NETWORK_STATUS:
-      case TOPIC.WALLET_RAW_TX:
-      case TOPIC.WALLET_STATUS:
-      case TOPIC.ETH_STATUS:
-        msgPayload = message.toString();
-        break;
-
-      default:
-        msgPayload = message.toString('hex');
-    }
-
     conn.write(JSON.stringify({topic: topic.toString('utf8'), message: msgPayload}));
   }
+
+  return null;
+}
+
+async function handleHashBlockMessage(topic, message, conn) {
+  if (!process.env.DEV) {
+    console.log(topic.toString('utf8'));
+  }
+
+  let hash = message.toString('hex');
+  let block = await rpcServices(client.callRpc).getBlock(hash).call();
+
+  // clean up matching map address entries
+  let toNotify = [];
+  unconfirmedTxAddressMap = unconfirmedTxAddressMap.filter(entry => {
+    let txMatch = block.tx.find(txid => txid === entry.txid);
+
+     // console.log('txmatch', txMatch, entry);
+
+    if(txMatch) {
+      delete unconfirmedTxMap[entry.txid];
+      toNotify.push(entry.address);
+      return false;
+    } else {
+      return true;
+    }
+  });
+
+  console.log('Notify', toNotify);
+
+  if (conn) {
+    conn.write(JSON.stringify({topic: topic.toString('utf8'), message: msgPayload}));
+  }
+
+  return null;
+}
+
+function logState() {
+  console.log('txs', Object.keys(unconfirmedTxMap));
+  console.log('map', unconfirmedTxAddressMap);
 }
