@@ -25,12 +25,11 @@ module.exports = {
           // Logger.info('Decoded', input, 'to', p2wpkh.address);
           result.push(p2wpkh.address)
         } catch (e) {
-          console.error('Failed to decode', input.witness.toString(), 'as p2wpkh');
+          // console.error('Failed to decode', input.witness.toString(), 'as p2wpkh');
         }
       }
     });
 
-    console.info('vin2address:', result);
     return result;
   },
   getOutputAddressesFromVouts(outs) {
@@ -43,7 +42,7 @@ module.exports = {
 
       if (address) result.push(address);
     });
-    console.info('vout2address:', result);
+
     return result;
   }
 };

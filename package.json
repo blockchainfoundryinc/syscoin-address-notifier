@@ -17,6 +17,7 @@
     "bitcoinjs-lib": "^5.1.4",
     "dotenv": "^8.0.0",
     "fs": "0.0.1-security",
+    "print-object": "^1.1.3",
     "sockjs": "^0.3.19",
     "zeromq": "^5.1.0"
   }
