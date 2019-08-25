@@ -4,25 +4,18 @@ const zmq = require('zeromq');
 const sock = zmq.socket('sub');
 const bitcoin = require('bitcoinjs-lib');
 const utils = require('./utils');
-
+const { logState, handleDevLogging } = require('./logging');
 const printObject = require('print-object');
 const messageHander = require('./message-handlers');
-
-const TOPIC = {
-  RAW_BLOCK: 'rawblock',
-  RAW_TX: 'rawtx',
-  HASH_BLOCK: 'hashblock',
-  HASH_TX: 'hashtx',
-  WALLET_STATUS: 'walletstatus',
-  ETH_STATUS: 'ethstatus',
-  NETWORK_STATUS: 'networkstatus',
-  WALLET_RAW_TX: 'walletrawtx'
-};
+const TOPIC = require('./message-topic');
 
 let globalUnconfirmedTxToAddressArr = [];
-let unconfirmedTxMap = {};
+let globalBlockTxArr = [];
+let globalUnconfirmedTxMap = {};
 
 module.exports = {
+  TOPIC,
+  blockTxArr: globalBlockTxArr,
   startServer(config = {zmq_address: null, ws_port: null},
               onReady = () => {},
               onReadyToIndex = () => {},
@@ -44,13 +37,16 @@ module.exports = {
     sock.on('message', async (topic, message) => {
       switch (topic.toString('utf8')) {
         case TOPIC.RAW_TX:
-          await messageHander.handleRawTxMessage(topic, message, unconfirmedTxMap, globalUnconfirmedTxToAddressArr);
-          logState();
+          await messageHander.handleRawTxMessage(topic, message, globalUnconfirmedTxMap, globalUnconfirmedTxToAddressArr);
+          logState(null, globalUnconfirmedTxToAddressArr, globalUnconfirmedTxMap, globalBlockTxArr);
           break;
 
         case TOPIC.HASH_BLOCK:
-          setTimeout(doTimeout, 500, topic, message, unconfirmedTxMap, globalUnconfirmedTxToAddressArr);
-          // logState();
+          // setTimeout(doTimeout, 500, topic, message, unconfirmedTxMap, globalUnconfirmedTxToAddressArr);
+          let res = await doTimeout(topic, message, globalUnconfirmedTxMap, globalUnconfirmedTxToAddressArr, globalBlockTxArr);
+          globalUnconfirmedTxToAddressArr = res.unconfirmedTxToAddressArr;
+          globalBlockTxArr = res.confirmed;
+          logState(null, globalUnconfirmedTxToAddressArr, globalUnconfirmedTxMap, globalBlockTxArr);
           break;
       }
     });
@@ -64,6 +60,7 @@ module.exports = {
 
       // setup the connection object w additional data
       conn.syscoinAddress = parseAddress(conn.url);
+      if (!conn.syscoinAddress) conn.close();
       dumpPendingMessagesToClient(conn);
 
       conn.on('close', function () {
@@ -75,12 +72,15 @@ module.exports = {
         switch (topic.toString('utf8')) {
           case TOPIC.RAW_TX:
             await messageHander.handleRawTxMessage(topic, message, conn.unconfirmedTxMap, conn.unconfirmedTxToAddressArr, conn);
-            logState(conn);
+            logState(conn, conn.unconfirmedTxToAddressArr, conn.unconfirmedTxMap, conn.blockTxArr);
             break;
 
           case TOPIC.HASH_BLOCK:
-            setTimeout(doTimeout.bind(conn), 500, topic, message, conn.unconfirmedTxMap, conn.unconfirmedTxToAddressArr, conn);
-            // logState(conn);
+            // setTimeout(doTimeout, 500, topic, message, conn.unconfirmedTxMap, conn.unconfirmedTxToAddressArr, conn);
+            let res = await doTimeout(topic, message, conn.unconfirmedTxMap, conn.unconfirmedTxToAddressArr, conn.blockTxArr, conn);
+            conn.unconfirmedTxToAddressArr = res.unconfirmedTxToAddressArr;
+            conn.blockTxArr = res.confirmed;
+            logState(conn, conn.unconfirmedTxToAddressArr, conn.unconfirmedTxMap, conn.blockTxArr);
             break;
         }
       });
@@ -95,13 +95,12 @@ module.exports = {
   }
 };
 
-async function doTimeout(topic, message, unconfirmedTxMap, unconfirmedTxToAddressArr, conn) {
+async function doTimeout(topic, message, unconfirmedTxMap, unconfirmedTxToAddressArr, blockTxArr, conn) {
   if (conn) {
-    conn.unconfirmedTxToAddressArr = await messageHander.handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfirmedTxToAddressArr, conn);
+    return await messageHander.handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfirmedTxToAddressArr, blockTxArr, conn);
   } else {
-    globalUnconfirmedTxToAddressArr = await messageHander.handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfirmedTxToAddressArr);
+    return await messageHander.handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfirmedTxToAddressArr, blockTxArr);
   }
-  logState(conn);
 }
 
 function dumpPendingMessagesToClient(conn) {
@@ -113,58 +112,12 @@ function dumpPendingMessagesToClient(conn) {
   });
 
   conn.unconfirmedTxToAddressArr = pendingTxForConn;
-  conn.unconfirmedTxMap = { ...unconfirmedTxMap };
+  conn.unconfirmedTxMap = { ...globalUnconfirmedTxMap };
+  conn.blockTxArr = [ ...globalBlockTxArr ];
   conn.write(JSON.stringify({topic: 'address', message: pendingTxForConn}));
-}
-
-function logState(conn) {
-  if (!conn) {
-    console.log('=====');
-    console.log('ADDRESS MAP');
-    Object.values(globalUnconfirmedTxToAddressArr).forEach(entry => {
-      console.log(entry.address, entry.txid);
-    });
-
-    console.log('TX MAP');
-    Object.keys(unconfirmedTxMap).forEach(txid => {
-      console.log(txid);
-    });
-    console.log('=====\n')
-  } else {
-    console.log('|| =====');
-    console.log('|| ' + conn.syscoinAddress,' \n|| ADDRESS MAP');
-    Object.values(conn.unconfirmedTxToAddressArr).forEach(entry => {
-      console.log('|| ' + entry.address, entry.txid);
-    });
-
-    console.log('|| TX MAP');
-    Object.keys(conn.unconfirmedTxMap).forEach(txid => {
-      console.log('|| ' + txid);
-    });
-    console.log('|| =====\n')
-  }
 }
 
 function parseAddress(url) {
   return url.substr((url.indexOf('address') + 8));
 }
 
-function handleDevLogging(sock) {
-  if (process.env.DEV) {
-    console.log('dev mode.');
-    sock.on('message', function (topic, message) {
-      //console.log('[raw] TOPIC:', topic, ' MESSAGE', message);
-      switch (topic.toString('utf8')) {
-        case TOPIC.NETWORK_STATUS:
-        case TOPIC.WALLET_RAW_TX:
-        case TOPIC.WALLET_STATUS:
-        case TOPIC.ETH_STATUS:
-          console.log('[->client] JSON TOPIC:', topic.toString('utf8'), ' MESSAGE', message.toString());
-          break;
-
-        default:
-          console.log('[~debug~] HEX TOPIC:', topic.toString('utf8'), ' MESSAGE', message.toString('hex'));
-      }
-    });
-  }
-}

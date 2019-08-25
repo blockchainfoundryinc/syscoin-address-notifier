@@ -12,6 +12,7 @@ const config = {
   logLevel: 'error'
 };
 const client = new SyscoinRpcClient(config);
+const confirmedTxPruneHeight = 3; // number of blocks after which we discard confirmed tx data
 
 async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedTxToAddressArr, conn) {
   let hexStr = message.toString('hex');
@@ -35,8 +36,8 @@ async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedT
   });
 
   // add tx to unconfirmed map
-  if (!conn || affectedAddresses.find(entry => entry === conn.syscoinAddress))
-    unconfirmedTxMap[tx.txid] = tx;
+  //if (!conn || affectedAddresses.find(entry => entry === conn.syscoinAddress))
+  //  unconfirmedTxMap[tx.txid] = tx;
 
   if (!process.env.DEV) {
     const prefix = conn ? '|| ' : '';
@@ -51,7 +52,7 @@ async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedT
       if (conn && conn.syscoinAddress === address) {
         unconfirmedTxToAddressArr.push({address, txid: tx.txid});
         console.log('|| UNCONFIRMED TX Notifying:', address, ' of ', tx.txid);
-        conn.write(JSON.stringify({topic: 'unconfirmed', message: tx.txid}));
+        conn.write(JSON.stringify({topic: 'unconfirmed', message: tx}));
       } else if (!conn) {
         unconfirmedTxToAddressArr.push({address, txid: tx.txid});
       }
@@ -61,18 +62,33 @@ async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedT
   return null;
 }
 
-async function handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfirmedTxToAddressArr, conn) {
+async function handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfirmedTxToAddressArr, blockTxArr, conn) {
   let hash = message.toString('hex');
   let block = await rpcServices(client.callRpc).getBlock(hash).call();
   let removeArrCount = 0;
   let removeTxCount = 0;
 
-  // clean up matching map address entries
-  let toNotify = [];
+  // TRANSACTION MGMT
+  // remove old txs from confirmed array
+  blockTxArr = blockTxArr.filter(tx => block.height - tx.height < confirmedTxPruneHeight);
+
+  // add new txs to it in memo-ized format
+  blockTxArr.push({ height: block.height, txs: block.tx });
+
+  // cleanup the tx array in case there are coinbase txs or such that don't map to an address
+  //block.tx.forEach(txid => {
+  //  if (unconfirmedTxMap[txid]) removeTxCount ++;
+  //  delete unconfirmedTxMap[txid]
+  //});
+
+  // ADDRESS MGMT
+  let toNotify = []; //only used if we have a conn
+
+  // remove matching map address entries
   unconfirmedTxToAddressArr = unconfirmedTxToAddressArr.filter(entry => {
-    let txMatch = block.tx.find(txid => txid === entry.txid);
+    let txMatch = blockTxArr.find(block => block.txs.find(txid => entry.txid === txid));
     if (txMatch) {
-      removeArrCount ++;
+      removeArrCount++;
       toNotify.push(entry);
       return false;
     } else {
@@ -80,11 +96,26 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfir
     }
   });
 
-  // cleanup the tx array in case there are coinbase txs or such that don't map to an address
-  block.tx.forEach(txid => {
-    if (unconfirmedTxMap[txid]) removeTxCount ++;
-    delete unconfirmedTxMap[txid]
-  });
+  // notify clients
+  if (conn) {
+    const flattenedNotificationList = {};
+    toNotify.forEach(entry => {
+      if (flattenedNotificationList[entry.address]) {
+        flattenedNotificationList[entry.address].push(entry.txid);
+      } else {
+        flattenedNotificationList[entry.address] = [entry.txid];
+      }
+    });
+
+    if (Object.keys(flattenedNotificationList).length > 0) console.log('|| CONFIRMED TX Notifying:', printObject(flattenedNotificationList));
+
+    Object.keys(flattenedNotificationList).forEach(key => {
+      const entry = flattenedNotificationList[key];
+      if (conn && conn.syscoinAddress === key) {
+        conn.write(JSON.stringify({topic: 'confirmed', message: entry}));
+      }
+    });
+  }
 
   if (!process.env.DEV) {
     const prefix = conn ? '|| ' : '';
@@ -92,19 +123,10 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfir
     console.log(prefix + '>> ' + block.tx);
 
     if (removeArrCount > 0 || removeTxCount > 0)
-      console.log(`${prefix} Removed ${removeArrCount} ADDRESS entries and ${removeTxCount} TX entries`);
+      console.log(`${prefix} Removed ${removeArrCount} ADDRESS entries`);
   }
 
-  if (conn) {
-    if (toNotify.length > 0) console.log('|| CONFIRMED TX Notifying:', printObject(toNotify));
-    toNotify.forEach(entry => {
-      if (conn && conn.syscoinAddress === entry.address) {
-        conn.write(JSON.stringify({topic: 'confirmed', message: entry.txid}));
-      }
-    });
-  }
-
-  return unconfirmedTxToAddressArr;
+  return { unconfirmedTxToAddressArr, confirmed: blockTxArr };
 }
 
 module.exports = {
