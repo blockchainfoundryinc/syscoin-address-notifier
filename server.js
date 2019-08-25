@@ -4,9 +4,9 @@ const zmq = require('zeromq');
 const sock = zmq.socket('sub');
 const bitcoin = require('bitcoinjs-lib');
 const utils = require('./utils');
-const SyscoinRpcClient = require("@syscoin/syscoin-js").SyscoinRpcClient;
-const rpcServices = require("@syscoin/syscoin-js").rpcServices;
+
 const printObject = require('print-object');
+const messageHander = require('./message-handlers');
 
 const TOPIC = {
   RAW_BLOCK: 'rawblock',
@@ -19,15 +19,7 @@ const TOPIC = {
   WALLET_RAW_TX: 'walletrawtx'
 };
 
-const config = {
-  host: "localhost",
-  rpcPort: 8368, // This is the port used in the docker-based integration tests, change at your peril
-  username: "7d012d9bf253183d",
-  password: "912e80993a303db807fdffb97f299531",
-  logLevel: 'error'
-};
-const client = new SyscoinRpcClient(config);
-let unconfirmedTxToAddressArr = [];
+let globalUnconfirmedTxToAddressArr = [];
 let unconfirmedTxMap = {};
 
 module.exports = {
@@ -48,13 +40,31 @@ module.exports = {
     sock.subscribe(TOPIC.RAW_TX);
     sock.subscribe(TOPIC.HASH_BLOCK);
 
+    // setup a persistent handler
+    sock.on('message', async (topic, message) => {
+      switch (topic.toString('utf8')) {
+        case TOPIC.RAW_TX:
+          await messageHander.handleRawTxMessage(topic, message, unconfirmedTxMap, globalUnconfirmedTxToAddressArr);
+          logState();
+          break;
+
+        case TOPIC.HASH_BLOCK:
+          setTimeout(doTimeout, 500, topic, message, unconfirmedTxMap, globalUnconfirmedTxToAddressArr);
+          // logState();
+          break;
+      }
+    });
+
     // create websocket server
-    const echo = sockjs.createServer({prefix: '/zmq'});
+    const websocketServer = sockjs.createServer({prefix: '/zmq'});
 
     // setup websocket
-    echo.on('connection', function (conn) {
+    websocketServer.on('connection', function (conn) {
       console.log("client connected", parseAddress(conn.url));
+
+      // setup the connection object w additional data
       conn.syscoinAddress = parseAddress(conn.url);
+      dumpPendingMessagesToClient(conn);
 
       conn.on('close', function () {
         console.log("client disconnected");
@@ -63,20 +73,20 @@ module.exports = {
       sock.on('message', async (topic, message) => {
         switch (topic.toString('utf8')) {
           case TOPIC.RAW_TX:
-            await handleRawTxMessage(topic, message, conn);
-            logState();
+            await messageHander.handleRawTxMessage(topic, message, conn.unconfirmedTxMap, conn.unconfirmedTxToAddressArr, conn);
+            logState(conn);
             break;
 
           case TOPIC.HASH_BLOCK:
-            await handleHashBlockMessage(topic, message, conn);
-            logState();
+            setTimeout(doTimeout.bind(conn), 500, topic, message, conn.unconfirmedTxMap, conn.unconfirmedTxToAddressArr, conn);
+            // logState(conn);
             break;
         }
       });
     });
 
     const server = http.createServer();
-    echo.installHandlers(server);
+    websocketServer.installHandlers(server);
     server.listen(config.ws_port, '0.0.0.0');
 
     // let external processes know we're ready
@@ -84,88 +94,54 @@ module.exports = {
   }
 };
 
-async function handleRawTxMessage(topic, message, conn) {
-  if (!process.env.DEV) {
-    console.log(topic.toString('utf8'));
-  }
-
-  let hexStr = message.toString('hex');
-  let tx = bitcoin.Transaction.fromHex(hexStr);
-
-  // get all the addresses associated w the transaction
-  let inAddresses = utils.getInputAddressesFromVins(tx.ins);
-  let outAddresses = utils.getOutputAddressesFromVouts(tx.outs);
-  let affectedAddresses = [...inAddresses, ...outAddresses].filter((value, index, self) => {
-    return self.indexOf(value) === index;
-  });
-
-  tx = await rpcServices(client.callRpc).decodeRawTransaction(hexStr).call();
-
-  // add tx to unconfirmed map
-  unconfirmedTxMap[tx.txid] = tx;
-
-  // map address to tx
-  console.log('UNCONFIRMED TX Notifying:', printObject(affectedAddresses));
-  affectedAddresses.forEach(address => {
-    // see if we already have an entry for this address/tx
-    if (!unconfirmedTxToAddressArr.find(entry => entry.address === address && entry.txid === tx.txid)) {
-      unconfirmedTxToAddressArr.push({address, txid: tx.txid});
-
-      if (conn.syscoinAddress === address) {
-        conn.write(JSON.stringify({topic: 'address', message: tx.txid}));
-      }
-    }
-  });
-
-  return null;
-}
-
-async function handleHashBlockMessage(topic, message, conn) {
-  if (!process.env.DEV) {
-    console.log(topic.toString('utf8'));
-  }
-
-  let hash = message.toString('hex');
-  let block = await rpcServices(client.callRpc).getBlock(hash).call();
-
-  // clean up matching map address entries
-  let toNotify = [];
-  unconfirmedTxToAddressArr = unconfirmedTxToAddressArr.filter(entry => {
-    let txMatch = block.tx.find(txid => txid === entry.txid);
-    if (txMatch) {
-      delete unconfirmedTxMap[entry.txid];
-      toNotify.push(entry);
-      return false;
-    } else {
-      return true;
-    }
-  });
-
-  console.log('CONFIRMED TX Notifying:', printObject(toNotify));
-
+async function doTimeout(topic, message, unconfirmedTxMap, unconfirmedTxToAddressArr, conn) {
   if (conn) {
-    toNotify.forEach(entry => {
-      if (conn.syscoinAddress === entry.address) {
-        conn.write(JSON.stringify({topic: 'address', message: entry.txid}));
-      }
-    });
+    conn.unconfirmedTxToAddressArr = await messageHander.handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfirmedTxToAddressArr, conn);
+  } else {
+    globalUnconfirmedTxToAddressArr = await messageHander.handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfirmedTxToAddressArr);
   }
-
-  return null;
+  logState(conn);
 }
 
-function logState() {
-  console.log('=====');
-  console.log('ADDRESS MAP');
-  Object.values(unconfirmedTxToAddressArr).forEach(entry => {
-    console.log(entry.address, entry.txid);
+function dumpPendingMessagesToClient(conn) {
+  let pendingTxForConn = [];
+  globalUnconfirmedTxToAddressArr.forEach(entry => {
+    if (entry.address === conn.syscoinAddress) {
+      pendingTxForConn.push(entry);
+    }
   });
 
-  console.log('TX MAP');
-  Object.keys(unconfirmedTxMap).forEach(txid => {
-    console.log(txid);
-  });
-  console.log('=====\n')
+  conn.unconfirmedTxToAddressArr = pendingTxForConn;
+  conn.unconfirmedTxMap = { ...unconfirmedTxMap };
+  conn.write(JSON.stringify({topic: 'address', message: pendingTxForConn}));
+}
+
+function logState(conn) {
+  if (!conn) {
+    console.log('=====');
+    console.log('ADDRESS MAP');
+    Object.values(globalUnconfirmedTxToAddressArr).forEach(entry => {
+      console.log(entry.address, entry.txid);
+    });
+
+    console.log('TX MAP');
+    Object.keys(unconfirmedTxMap).forEach(txid => {
+      console.log(txid);
+    });
+    console.log('=====\n')
+  } else {
+    console.log('|| =====');
+    console.log('|| ' + conn.syscoinAddress,' \n|| ADDRESS MAP');
+    Object.values(conn.unconfirmedTxToAddressArr).forEach(entry => {
+      console.log('|| ' + entry.address, entry.txid);
+    });
+
+    console.log('|| TX MAP');
+    Object.keys(conn.unconfirmedTxMap).forEach(txid => {
+      console.log('|| ' + txid);
+    });
+    console.log('|| =====\n')
+  }
 }
 
 function parseAddress(url) {
