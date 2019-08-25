@@ -68,9 +68,10 @@ module.exports = {
 
       conn.on('close', function () {
         console.log("client disconnected");
+        sock.removeListener('message', conn.messageHandler);
       });
 
-      sock.on('message', async (topic, message) => {
+      sock.on('message', conn.messageHandler = async (topic, message) => {
         switch (topic.toString('utf8')) {
           case TOPIC.RAW_TX:
             await messageHander.handleRawTxMessage(topic, message, conn.unconfirmedTxMap, conn.unconfirmedTxToAddressArr, conn);
