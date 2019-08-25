@@ -63,12 +63,15 @@ async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedT
 async function handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfirmedTxToAddressArr, conn) {
   let hash = message.toString('hex');
   let block = await rpcServices(client.callRpc).getBlock(hash).call();
+  let removeArrCount = 0;
+  let removeTxCount = 0;
 
   // clean up matching map address entries
   let toNotify = [];
   unconfirmedTxToAddressArr = unconfirmedTxToAddressArr.filter(entry => {
     let txMatch = block.tx.find(txid => txid === entry.txid);
     if (txMatch) {
+      removeArrCount ++;
       toNotify.push(entry);
       return false;
     } else {
@@ -77,12 +80,18 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfir
   });
 
   // cleanup the tx array in case there are coinbase txs or such that don't map to an address
-  block.tx.forEach(txid => (delete unconfirmedTxMap[txid]));
+  block.tx.forEach(txid => {
+    if (unconfirmedTxMap[txid]) removeTxCount ++;
+    delete unconfirmedTxMap[txid]
+  });
 
   if (!process.env.DEV) {
     const prefix = conn ? '|| ' : '';
     console.log(prefix + '>> ' + topic.toString('utf8') + ' conn:', conn ? conn.syscoinAddress : 'n/a');
     console.log(prefix + '>> ' + block.tx);
+
+    if (removeArrCount > 0 || removeTxCount > 0)
+      console.log(`${prefix} Removed ${removeArrCount} ADDRESS entries and ${removeTxCount} TX entries`);
   }
 
   if (conn) {
