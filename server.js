@@ -60,11 +60,14 @@ module.exports = {
 
       // setup the connection object w additional data
       conn.syscoinAddress = parseAddress(conn.url);
-      if (!conn.syscoinAddress) conn.close();
+      if (!conn.syscoinAddress) {
+        console.log('connection missing address data, kicking:', conn.url);
+        conn.close();
+      }
       dumpPendingMessagesToClient(conn);
 
       conn.on('close', function () {
-        console.log("client disconnected");
+        console.log("client disconnected", conn.syscoinAddress);
         sock.removeListener('message', conn.messageHandler);
       });
 
@@ -114,7 +117,9 @@ function dumpPendingMessagesToClient(conn) {
   conn.unconfirmedTxToAddressArr = pendingTxForConn;
   conn.unconfirmedTxMap = { ...globalUnconfirmedTxMap };
   conn.blockTxArr = [ ...globalBlockTxArr ];
-  conn.write(JSON.stringify({topic: 'address', message: pendingTxForConn}));
+
+  if (pendingTxForConn.length > 0)
+    conn.write(JSON.stringify({topic: 'unconfirmed', message: pendingTxForConn.map(entry => entry.txid)}));
 }
 
 function parseAddress(url) {
