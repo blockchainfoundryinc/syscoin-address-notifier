@@ -3,6 +3,7 @@ const utils = require('./utils');
 const printObject = require('print-object');
 const SyscoinRpcClient = require("@syscoin/syscoin-js").SyscoinRpcClient;
 const rpcServices = require("@syscoin/syscoin-js").rpcServices;
+const sysTxParser = require('./sys-tx-parser');
 const config = {
   host: "localhost",
   rpcPort: 8368, // This is the port used in the docker-based integration tests, change at your peril
@@ -17,17 +18,21 @@ async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedT
   let tx = bitcoin.Transaction.fromHex(hexStr);
 
   // get all the addresses associated w the transaction
+  let sysTxAddresses = [];
   let inAddresses = utils.getInputAddressesFromVins(tx.ins);
   let outAddresses = utils.getOutputAddressesFromVouts(tx.outs);
-  let affectedAddresses = [...inAddresses, ...outAddresses].filter((value, index, self) => {
+  tx = await rpcServices(client.callRpc).decodeRawTransaction(hexStr).call();
+  if (tx.systx) {
+    sysTxAddresses = sysTxParser.parseAddressesFromSysTx(tx.systx);
+  }
+
+  let affectedAddresses = [ ...inAddresses, ...outAddresses, ...sysTxAddresses ].filter((value, index, self) => {
     if (!conn) {
       return self.indexOf(value) === index;
     } else {
       return conn.syscoinAddress === value && self.indexOf(value) === index;
     }
   });
-
-  tx = await rpcServices(client.callRpc).decodeRawTransaction(hexStr).call();
 
   // add tx to unconfirmed map
   if (!conn || affectedAddresses.find(entry => entry === conn.syscoinAddress))
@@ -45,7 +50,7 @@ async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedT
       if (conn && conn.syscoinAddress === address) {
         unconfirmedTxToAddressArr.push({address, txid: tx.txid});
         console.log('|| UNCONFIRMED TX Notifying:', address, ' of ', tx.txid);
-        conn.write(JSON.stringify({topic: 'address', message: tx.txid}));
+        conn.write(JSON.stringify({topic: 'unconfirmed', message: tx.txid}));
       } else if (!conn) {
         unconfirmedTxToAddressArr.push({address, txid: tx.txid});
       }
@@ -84,7 +89,7 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfir
     if (toNotify.length > 0) console.log('|| CONFIRMED TX Notifying:', printObject(toNotify));
     toNotify.forEach(entry => {
       if (conn && conn.syscoinAddress === entry.address) {
-        conn.write(JSON.stringify({topic: 'address', message: entry.txid}));
+        conn.write(JSON.stringify({topic: 'confirmed', message: entry.txid}));
       }
     });
   }
