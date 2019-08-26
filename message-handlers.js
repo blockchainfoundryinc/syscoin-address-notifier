@@ -1,9 +1,10 @@
 const bitcoin = require('bitcoinjs-lib');
 const utils = require('./utils');
 const printObject = require('print-object');
-const SyscoinRpcClient = require("@syscoin/syscoin-js").SyscoinRpcClient;
-const rpcServices = require("@syscoin/syscoin-js").rpcServices;
 const sysTxParser = require('./sys-tx-parser');
+const confirmedTxPruneHeight = 3; // number of blocks after which we discard confirmed tx data
+const rpcServices = require("@syscoin/syscoin-js").rpcServices;
+const SyscoinRpcClient = require("@syscoin/syscoin-js").SyscoinRpcClient;
 const config = {
   host: "localhost",
   rpcPort: 8368, // This is the port used in the docker-based integration tests, change at your peril
@@ -12,7 +13,6 @@ const config = {
   logLevel: 'error'
 };
 const client = new SyscoinRpcClient(config);
-const confirmedTxPruneHeight = 3; // number of blocks after which we discard confirmed tx data
 
 async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedTxToAddressArr, conn) {
   let hexStr = message.toString('hex');
@@ -50,11 +50,11 @@ async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedT
     // see if we already have an entry for this address/tx
     if (!unconfirmedTxToAddressArr.find(entry => entry.address === address && entry.txid === tx.txid)) {
       if (conn && conn.syscoinAddress === address) {
-        unconfirmedTxToAddressArr.push({address, txid: tx.txid});
-        console.log('|| UNCONFIRMED TX Notifying:', address, ' of ', tx.txid);
-        conn.write(JSON.stringify({topic: 'unconfirmed', message: tx.txid}));
+        unconfirmedTxToAddressArr.push({address, txid: tx.txid, tx: tx , hex: hexStr });
+        console.log('|| UNCONFIRMED NOTIFY:', address, ' of ', tx.txid);
+        conn.write(JSON.stringify({topic: 'unconfirmed', message: { tx, hex: hexStr } }));
       } else if (!conn) {
-        unconfirmedTxToAddressArr.push({address, txid: tx.txid});
+        unconfirmedTxToAddressArr.push({address, txid: tx.txid, tx });
       }
     }
   });
@@ -107,7 +107,7 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfir
       }
     });
 
-    if (Object.keys(flattenedNotificationList).length > 0) console.log('|| CONFIRMED TX Notifying:', printObject(flattenedNotificationList));
+    if (Object.keys(flattenedNotificationList).length > 0) console.log('|| CONFIRMED NOTIFY:', printObject(flattenedNotificationList));
 
     Object.keys(flattenedNotificationList).forEach(key => {
       const entry = flattenedNotificationList[key];

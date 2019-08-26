@@ -8,12 +8,23 @@ const { logState, handleDevLogging } = require('./logging');
 const printObject = require('print-object');
 const messageHander = require('./message-handlers');
 const TOPIC = require('./message-topic');
+const rpcServices = require("@syscoin/syscoin-js").rpcServices;
+const SyscoinRpcClient = require("@syscoin/syscoin-js").SyscoinRpcClient;
+const config = {
+  host: "localhost",
+  rpcPort: 8368, // This is the port used in the docker-based integration tests, change at your peril
+  username: "7d012d9bf253183d",
+  password: "912e80993a303db807fdffb97f299531",
+  logLevel: 'error'
+};
+const client = new SyscoinRpcClient(config);
 
 let globalUnconfirmedTxToAddressArr = [];
 let globalBlockTxArr = [];
 let globalUnconfirmedTxMap = {};
 
 module.exports = {
+  sysClient: client,
   TOPIC,
   blockTxArr: globalBlockTxArr,
   startServer(config = {zmq_address: null, ws_port: null},
@@ -119,7 +130,7 @@ function dumpPendingMessagesToClient(conn) {
   conn.blockTxArr = [ ...globalBlockTxArr ];
 
   if (pendingTxForConn.length > 0)
-    conn.write(JSON.stringify({topic: 'unconfirmed', message: pendingTxForConn.map(entry => entry.txid)}));
+    conn.write(JSON.stringify({topic: 'unconfirmed', message: pendingTxForConn.map(entry => ({ tx: entry.tx, hex: entry.hex })) }));
 }
 
 function parseAddress(url) {
