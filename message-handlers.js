@@ -65,7 +65,7 @@ async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedT
 }
 
 async function handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfirmedTxToAddressArr, blockTxArr, conn) {
-  let hash = message.toString('hex');
+ /* let hash = message.toString('hex');
   let block = await rpcServices(client.callRpc).getBlock(hash).call();
   let removeArrCount = 0;
   let removeTxCount = 0;
@@ -129,7 +129,8 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfir
       console.log(`${prefix} Removed ${removeArrCount} ADDRESS entries`);
   }
 
-  return { unconfirmedTxToAddressArr, confirmed: blockTxArr };
+  return { unconfirmedTxToAddressArr, confirmed: blockTxArr };*/
+  return { unconfirmedTxToAddressArr: [], confirmed: [] };
 }
 
 module.exports = {
