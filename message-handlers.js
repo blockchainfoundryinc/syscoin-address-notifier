@@ -42,7 +42,7 @@ async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedT
   if (!process.env.DEV) {
     const prefix = conn ? '|| ' : '';
     console.log(prefix + '>> ' + topic.toString('utf8') + ' conn:', conn ? conn.syscoinAddress : 'n/a');
-    console.log(prefix + '>> ' + tx.txid);
+    console.log(prefix + '>> ' + message, hexStr);
   }
 /*
   // map address to tx
