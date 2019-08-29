@@ -8,8 +8,8 @@ const SyscoinRpcClient = require("@syscoin/syscoin-js").SyscoinRpcClient;
 const config = {
   host: "localhost",
   rpcPort: 8368, // This is the port used in the docker-based integration tests, change at your peril
-  username: "7d012d9bf253183d",
-  password: "912e80993a303db807fdffb97f299531",
+  username: "u",
+  password: "p",
   logLevel: 'error'
 };
 const client = new SyscoinRpcClient(config);
@@ -40,10 +40,6 @@ async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedT
     }
   });
 
-  // add tx to unconfirmed map
-  //if (!conn || affectedAddresses.find(entry => entry === conn.syscoinAddress))
-  //  unconfirmedTxMap[tx.txid] = tx;
-
   if (!process.env.DEV) {
     const prefix = conn ? '|| ' : '';
     console.log(prefix + '>> ' + topic.toString('utf8') + ' conn:', conn ? conn.syscoinAddress : 'n/a');
@@ -58,8 +54,7 @@ async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedT
         unconfirmedTxToAddressArr.push({address, txid: tx.txid, tx: tx , hex: hexStr });
         console.log('|| UNCONFIRMED NOTIFY:', address, ' of ', tx.txid);
         const message = { tx, hex: hexStr };
-        console.log("MESSAGE:", message);
-        // conn.write(JSON.stringify({topic: 'unconfirmed', message }));
+        conn.write(JSON.stringify({topic: 'unconfirmed', message }));
       } else if (!conn) {
         unconfirmedTxToAddressArr.push({address, txid: tx.txid, tx });
       }
@@ -112,7 +107,7 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfir
     Object.keys(flattenedNotificationList).forEach(key => {
       const entry = flattenedNotificationList[key];
       if (conn && conn.syscoinAddress === key) {
-        // conn.write(JSON.stringify({topic: 'confirmed', message: entry}));
+        conn.write(JSON.stringify({topic: 'confirmed', message: entry}));
       }
     });
   }
