@@ -52,7 +52,7 @@ async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedT
       if (conn && conn.syscoinAddress === address) {
         unconfirmedTxToAddressArr.push({address, txid: tx.txid, tx: tx , hex: hexStr });
         console.log('|| UNCONFIRMED NOTIFY:', address, ' of ', tx.txid);
-        conn.write(JSON.stringify({topic: 'unconfirmed', message: { tx, hex: hexStr } }));
+        conn.write(JSON.stringify({topic: 'unconfirmed', message: { hex: hexStr } }));
       } else if (!conn) {
         unconfirmedTxToAddressArr.push({address, txid: tx.txid, tx });
       }
