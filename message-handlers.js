@@ -22,7 +22,6 @@ async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedT
   let sysTxAddresses = [];
   let inAddresses = utils.getInputAddressesFromVins(tx.ins);
   let outAddresses = utils.getOutputAddressesFromVouts(tx.outs);
-  console.log('HEX', hexStr);
   try {
     tx = await rpcServices(client.callRpc).decodeRawTransaction(hexStr).call();
   } catch (e) {
