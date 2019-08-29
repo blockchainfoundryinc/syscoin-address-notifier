@@ -54,7 +54,7 @@ async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedT
         console.log('|| UNCONFIRMED NOTIFY:', address, ' of ', tx.txid);
         const message = { tx, hex: hexStr };
         console.log("MESSAGE:", message);
-        conn.write(JSON.stringify({topic: 'unconfirmed', message }));
+        // conn.write(JSON.stringify({topic: 'unconfirmed', message }));
       } else if (!conn) {
         unconfirmedTxToAddressArr.push({address, txid: tx.txid, tx });
       }
