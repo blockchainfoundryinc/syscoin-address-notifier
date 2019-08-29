@@ -42,7 +42,7 @@ module.exports = {
     handleDevLogging(sock);
     sock.connect(config.zmq_address);
     sock.subscribe(TOPIC.RAW_TX);
-    sock.subscribe(TOPIC.HASH_BLOCK);
+    //sock.subscribe(TOPIC.HASH_BLOCK);
 
     // setup a persistent handler
     sock.on('message', async (topic, message) => {
