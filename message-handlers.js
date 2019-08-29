@@ -27,6 +27,7 @@ async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedT
   } catch (e) {
     console.log("ERROR:", e);
   }
+
   if (tx.systx) {
     sysTxAddresses = sysTxParser.parseAddressesFromSysTx(tx.systx);
   }
