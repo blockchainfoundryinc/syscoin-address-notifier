@@ -22,7 +22,7 @@ async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedT
   let sysTxAddresses = [];
   let inAddresses = utils.getInputAddressesFromVins(tx.ins);
   let outAddresses = utils.getOutputAddressesFromVouts(tx.outs);
-  tx = await rpcServices(client.callRpc).decodeRawTransaction(hexStr).call();
+ /* tx = await rpcServices(client.callRpc).decodeRawTransaction(hexStr).call();
   if (tx.systx) {
     sysTxAddresses = sysTxParser.parseAddressesFromSysTx(tx.systx);
   }
@@ -43,7 +43,7 @@ async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedT
     const prefix = conn ? '|| ' : '';
     console.log(prefix + '>> ' + topic.toString('utf8') + ' conn:', conn ? conn.syscoinAddress : 'n/a');
     console.log(prefix + '>> ' + tx.txid);
-  }
+  }*/
 
   // map address to tx
   affectedAddresses.forEach(address => {
