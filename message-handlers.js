@@ -17,7 +17,6 @@ const client = new SyscoinRpcClient(config);
 async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedTxToAddressArr, conn) {
   let hexStr = message.toString('hex');
   let tx = bitcoin.Transaction.fromHex(hexStr);
-  console.log('Got raw tx:', tx, hexStr);
 
   // get all the addresses associated w the transaction
   let sysTxAddresses = [];
