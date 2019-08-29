@@ -17,7 +17,8 @@ const client = new SyscoinRpcClient(config);
 async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedTxToAddressArr, conn) {
   let hexStr = message.toString('hex');
   let tx = bitcoin.Transaction.fromHex(hexStr);
-/*
+  console.log('Got raw tx:', tx.txid, hexStr);
+
   // get all the addresses associated w the transaction
   let sysTxAddresses = [];
   let inAddresses = utils.getInputAddressesFromVins(tx.ins);
@@ -38,13 +39,13 @@ async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedT
   // add tx to unconfirmed map
   //if (!conn || affectedAddresses.find(entry => entry === conn.syscoinAddress))
   //  unconfirmedTxMap[tx.txid] = tx;
-*/
+
   if (!process.env.DEV) {
     const prefix = conn ? '|| ' : '';
     console.log(prefix + '>> ' + topic.toString('utf8') + ' conn:', conn ? conn.syscoinAddress : 'n/a');
-    console.log(prefix + '>> ' + message, hexStr);
+    console.log(prefix + '>> ' + tx.txid);
   }
-/*
+
   // map address to tx
   affectedAddresses.forEach(address => {
     // see if we already have an entry for this address/tx
@@ -60,7 +61,6 @@ async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedT
       }
     }
   });
-*/
   return null;
 }
 
