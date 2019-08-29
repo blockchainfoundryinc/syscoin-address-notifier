@@ -120,7 +120,8 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfir
   if (!process.env.DEV) {
     const prefix = conn ? '|| ' : '';
     console.log(prefix + '>> ' + topic.toString('utf8') + ' conn:', conn ? conn.syscoinAddress : 'n/a');
-    console.log(prefix + '>> ' + block.tx);
+    console.log(prefix + '>> Block hash:' + block.hash);
+    console.log(prefix + '>> Contains transactions:' + block.tx);
 
     if (removeArrCount > 0 || removeTxCount > 0)
       console.log(`${prefix} Removed ${removeArrCount} ADDRESS entries`);
