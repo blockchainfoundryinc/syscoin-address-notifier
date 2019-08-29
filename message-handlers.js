@@ -65,7 +65,7 @@ async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedT
 }
 
 async function handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfirmedTxToAddressArr, blockTxArr, conn) {
- /* let hash = message.toString('hex');
+  let hash = message.toString('hex');
   let block = await rpcServices(client.callRpc).getBlock(hash).call();
   let removeArrCount = 0;
   let removeTxCount = 0;
@@ -76,12 +76,6 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfir
 
   // add new txs to it in memo-ized format
   blockTxArr.push({ height: block.height, txs: block.tx });
-
-  // cleanup the tx array in case there are coinbase txs or such that don't map to an address
-  //block.tx.forEach(txid => {
-  //  if (unconfirmedTxMap[txid]) removeTxCount ++;
-  //  delete unconfirmedTxMap[txid]
-  //});
 
   // ADDRESS MGMT
   let toNotify = []; //only used if we have a conn
@@ -117,7 +111,7 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfir
         // conn.write(JSON.stringify({topic: 'confirmed', message: entry}));
       }
     });
-  }*/
+  }
 
   if (!process.env.DEV) {
     const prefix = conn ? '|| ' : '';
@@ -129,8 +123,7 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfir
       console.log(`${prefix} Removed ${removeArrCount} ADDRESS entries`);
   }
 
-  // return { unconfirmedTxToAddressArr, confirmed: blockTxArr };*/
-  return { unconfirmedTxToAddressArr: [], confirmed: [] };
+  return { unconfirmedTxToAddressArr, confirmed: blockTxArr };
 }
 
 module.exports = {
