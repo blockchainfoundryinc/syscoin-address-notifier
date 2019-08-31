@@ -43,7 +43,7 @@ async function handleRawTxMessage(topic, message, unconfirmedTxToAddressArr, con
     }
   });
 
-  if (!process.env.DEV) {
+  if (!process.env.DEV && !conn) {
     const prefix = conn ? '|| ' : '';
     console.log(prefix + '>> ' + topic.toString('utf8') + ' conn:', conn ? conn.syscoinAddress : 'n/a');
     console.log(prefix + '>> ' + tx.txid);
@@ -115,7 +115,7 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxToAddressArr,
     });
   }
 
-  if (!process.env.DEV) {
+  if (!process.env.DEV && !conn) {
     const prefix = conn ? '|| ' : '';
     console.log(prefix + '>> ' + topic.toString('utf8') + ' conn:', conn ? conn.syscoinAddress : 'n/a');
     console.log(prefix + '>> Block hash:' + block.hash);
