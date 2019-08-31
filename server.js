@@ -125,7 +125,6 @@ function dumpPendingMessagesToClient(conn) {
   });
 
   conn.unconfirmedTxToAddressArr = pendingTxForConn;
-  conn.unconfirmedTxMap = { ...globalUnconfirmedTxMap };
   conn.blockTxArr = [ ...globalBlockTxArr ];
 
   if (pendingTxForConn.length > 0)
