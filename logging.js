@@ -4,7 +4,7 @@ const {table} = require('table');
 function logState(addr, unconfirmed, blocks, connMap) {
 
   console.log("Connections");
-  console.log(table(Object.keys(connMap)));
+  console.log(Object.keys(connMap));
   console.log("Address Maps");
   console.log(table(unconfirmed));
   console.log("Block History");
