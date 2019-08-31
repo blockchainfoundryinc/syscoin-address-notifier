@@ -24,6 +24,9 @@ async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedT
   let outAddresses = utils.getOutputAddressesFromVouts(tx.outs);
   try {
     tx = await rpcServices(client.callRpc).decodeRawTransaction(hexStr).call();
+    if (!tx.txid) {
+      console.error('\nERROR! Undef txid!', tx, hexStr, '\n');
+    }
   } catch (e) {
     console.log("ERROR:", e);
   }
