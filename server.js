@@ -50,13 +50,14 @@ module.exports = {
       switch (topic.toString('utf8')) {
         case TOPIC.RAW_TX:
           await messageHander.handleRawTxMessage(topic, message, globalUnconfirmedTxToAddressArr);
-          logState(null, globalUnconfirmedTxToAddressArr, globalBlockTxArr, connectionMap);
-
           await Object.values(connectionMap).forEachAsync(async conn => {
             await messageHander.handleRawTxMessage(topic, message, conn.unconfirmedTxToAddressArr, conn);
-            logState(conn, conn.unconfirmedTxToAddressArr, conn.blockTxArr, connectionMap);
+            // logState(conn, conn.unconfirmedTxToAddressArr, conn.blockTxArr, connectionMap);
             return null;
           });
+
+          logState(null, globalUnconfirmedTxToAddressArr, globalBlockTxArr, connectionMap);
+
           break;
 
         case TOPIC.HASH_BLOCK:
@@ -64,15 +65,16 @@ module.exports = {
           let res = await doTimeout(topic, message, globalUnconfirmedTxToAddressArr, globalBlockTxArr);
           globalUnconfirmedTxToAddressArr = res.unconfirmedTxToAddressArr;
           globalBlockTxArr = res.confirmedTxIds;
-          logState(null, globalUnconfirmedTxToAddressArr, globalBlockTxArr, connectionMap);
-
           await Object.values(connectionMap).forEachAsync(async conn => {
             let res = await doTimeout(topic, message, conn.unconfirmedTxToAddressArr, conn.blockTxArr, conn);
             conn.unconfirmedTxToAddressArr = res.unconfirmedTxToAddressArr;
             conn.blockTxArr = res.confirmedTxIds;
-            logState(conn, conn.unconfirmedTxToAddressArr, conn.blockTxArr, connectionMap);
+            //logState(conn, conn.unconfirmedTxToAddressArr, conn.blockTxArr, connectionMap);
             return null;
           });
+
+          logState(null, globalUnconfirmedTxToAddressArr, globalBlockTxArr, connectionMap);
+
           break;
       }
     });
