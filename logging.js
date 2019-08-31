@@ -6,9 +6,9 @@ function logState(addr, unconfirmed, blocks, connMap) {
   console.log("Connections");
   console.log(Object.keys(connMap));
   console.log("Address Maps");
-  console.log(table(unconfirmed));
+  console.log(unconfirmed);
   console.log("Block History");
-  console.log(table(blocks));
+  console.log(blocks);
 
   /*const prefix = conn ? '|| ' : '';
     console.log(`${prefix}=====`);
