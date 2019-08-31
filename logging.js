@@ -3,7 +3,7 @@ const {table} = require('table');
 
 function logState(addr, unconfirmed, blocks, connMap) {
 
-  const prefix = conn ? '|| ' : '';
+  const prefix = addr ? '|| ' : '';
   console.log(`${prefix}=====`);
   console.log("Connections");
   console.log(Object.keys(connMap));
