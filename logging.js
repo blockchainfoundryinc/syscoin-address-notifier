@@ -6,10 +6,12 @@ function logState(addr, unconfirmed, blocks, connMap) {
   console.log("Connections");
   console.log(Object.keys(connMap));
   console.log("Address Maps");
-  console.log(unconfirmed);
-  console.log("Block History");
-  console.log(blocks);
-
+  Object.values(unconfirmed).forEach(entry => {
+    console.log(entry.address, entry.txid);
+  });  console.log("Block History");
+  Object.values(blocks).forEach(block => {
+    console.log(`${block.height} ${block.txs}`);
+  });
   /*const prefix = conn ? '|| ' : '';
     console.log(`${prefix}=====`);
     console.log(`${prefix}ADDRESS MAP`);
