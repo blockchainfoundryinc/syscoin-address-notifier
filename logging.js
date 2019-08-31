@@ -3,6 +3,8 @@ const {table} = require('table');
 
 function logState(addr, unconfirmed, blocks, connMap) {
 
+  const prefix = conn ? '|| ' : '';
+  console.log(`${prefix}=====`);
   console.log("Connections");
   console.log(Object.keys(connMap));
   console.log("Address Maps");
@@ -12,8 +14,9 @@ function logState(addr, unconfirmed, blocks, connMap) {
   Object.values(blocks).forEach(block => {
     console.log(`${block.height} ${block.txs}`);
   });
-  /*const prefix = conn ? '|| ' : '';
-    console.log(`${prefix}=====`);
+  console.log(`${prefix}=====\n`);
+
+  /*
     console.log(`${prefix}ADDRESS MAP`);
     Object.values(addr).forEach(entry => {
       console.log(prefix, entry.address, entry.txid);
@@ -23,7 +26,7 @@ function logState(addr, unconfirmed, blocks, connMap) {
     Object.values(blocks).forEach(block => {
       console.log(`${prefix}${block.height} ${block.txs}`);
     });
-    console.log(`${prefix}=====\n`);*/
+    */
 }
 
 function handleDevLogging(sock) {
