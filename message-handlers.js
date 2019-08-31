@@ -14,7 +14,7 @@ const config = {
 };
 const client = new SyscoinRpcClient(config);
 
-async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedTxToAddressArr, conn) {
+async function handleRawTxMessage(topic, message, unconfirmedTxToAddressArr, conn) {
   let hexStr = message.toString('hex');
   let tx = bitcoin.Transaction.fromHex(hexStr);
 
@@ -66,7 +66,7 @@ async function handleRawTxMessage(topic, message, unconfirmedTxMap, unconfirmedT
   return null;
 }
 
-async function handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfirmedTxToAddressArr, blockTxArr, conn) {
+async function handleHashBlockMessage(topic, message, unconfirmedTxToAddressArr, blockTxArr, conn) {
   let hash = message.toString('hex');
   let block = await rpcServices(client.callRpc).getBlock(hash).call();
   let removeArrCount = 0;
@@ -77,7 +77,7 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfir
   blockTxArr = blockTxArr.filter(tx => block.height - tx.height < confirmedTxPruneHeight);
 
   // add new txs to it in memo-ized format
-  blockTxArr.push({ height: block.height, txs: block.tx });
+  blockTxArr.push({ height: block.height, hash: block.hash, txs: block.tx });
 
   // ADDRESS MGMT
   let toNotify = []; //only used if we have a conn
@@ -125,7 +125,7 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxMap, unconfir
       console.log(`${prefix} Removed ${removeArrCount} ADDRESS entries`);
   }
 
-  return { unconfirmedTxToAddressArr, confirmed: blockTxArr };
+  return { unconfirmedTxToAddressArr, confirmedTxIds: blockTxArr };
 }
 
 module.exports = {
