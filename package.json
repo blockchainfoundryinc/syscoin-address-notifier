@@ -14,6 +14,7 @@
   "dependencies": {
     "@syscoin/syscoin-js": "^4.0.4",
     "@types/node": "^12.0.7",
+    "arraync": "^1.0.1",
     "bitcoinjs-lib": "^5.1.4",
     "dotenv": "^8.0.0",
     "fs": "0.0.1-security",

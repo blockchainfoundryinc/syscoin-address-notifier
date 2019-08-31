@@ -1,4 +1,5 @@
 const http = require('http');
+const arraync = require('arraync');
 const sockjs = require('sockjs');
 const zmq = require('zeromq');
 const sock = zmq.socket('sub');
@@ -22,6 +23,8 @@ const client = new SyscoinRpcClient(config);
 let globalUnconfirmedTxToAddressArr = [];
 let globalBlockTxArr = [];
 let globalUnconfirmedTxMap = {};
+
+let connectionMap = {};
 
 module.exports = {
   sysClient: client,
@@ -50,6 +53,12 @@ module.exports = {
         case TOPIC.RAW_TX:
           await messageHander.handleRawTxMessage(topic, message, globalUnconfirmedTxMap, globalUnconfirmedTxToAddressArr);
           logState(null, globalUnconfirmedTxToAddressArr, globalUnconfirmedTxMap, globalBlockTxArr);
+
+          await Object.values(connectionMap).forEachAsync(async conn => {
+            await messageHander.handleRawTxMessage(topic, message, conn.unconfirmedTxMap, conn.unconfirmedTxToAddressArr, conn);
+            logState(conn, conn.unconfirmedTxToAddressArr, conn.unconfirmedTxMap, conn.blockTxArr);
+            return null;
+          });
           break;
 
         case TOPIC.HASH_BLOCK:
@@ -58,6 +67,14 @@ module.exports = {
           globalUnconfirmedTxToAddressArr = res.unconfirmedTxToAddressArr;
           globalBlockTxArr = res.confirmed;
           logState(null, globalUnconfirmedTxToAddressArr, globalUnconfirmedTxMap, globalBlockTxArr);
+
+          await Object.values(connectionMap).forEachAsync(async conn => {
+            let res = await doTimeout(topic, message, conn.unconfirmedTxMap, conn.unconfirmedTxToAddressArr, conn.blockTxArr, conn);
+            conn.unconfirmedTxToAddressArr = res.unconfirmedTxToAddressArr;
+            conn.blockTxArr = res.confirmed;
+            logState(conn, conn.unconfirmedTxToAddressArr, conn.unconfirmedTxMap, conn.blockTxArr);
+            return null;
+          });
           break;
       }
     });
@@ -75,28 +92,12 @@ module.exports = {
         console.log('connection missing address data, kicking:', conn.url);
         conn.close();
       }
+      connectionMap[conn.syscoinAddress] = conn;
       dumpPendingMessagesToClient(conn);
 
       conn.on('close', function () {
         console.log("client disconnected", conn.syscoinAddress);
-        sock.removeListener('message', conn.messageHandler);
-      });
-
-      sock.on('message', conn.messageHandler = async (topic, message) => {
-        switch (topic.toString('utf8')) {
-          case TOPIC.RAW_TX:
-            await messageHander.handleRawTxMessage(topic, message, conn.unconfirmedTxMap, conn.unconfirmedTxToAddressArr, conn);
-            logState(conn, conn.unconfirmedTxToAddressArr, conn.unconfirmedTxMap, conn.blockTxArr);
-            break;
-
-          case TOPIC.HASH_BLOCK:
-            // setTimeout(doTimeout, 500, topic, message, conn.unconfirmedTxMap, conn.unconfirmedTxToAddressArr, conn);
-            let res = await doTimeout(topic, message, conn.unconfirmedTxMap, conn.unconfirmedTxToAddressArr, conn.blockTxArr, conn);
-            conn.unconfirmedTxToAddressArr = res.unconfirmedTxToAddressArr;
-            conn.blockTxArr = res.confirmed;
-            logState(conn, conn.unconfirmedTxToAddressArr, conn.unconfirmedTxMap, conn.blockTxArr);
-            break;
-        }
+        delete connectionMap[conn.syscoinAddress];
       });
     });
 
