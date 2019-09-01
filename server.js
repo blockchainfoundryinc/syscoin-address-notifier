@@ -134,6 +134,6 @@ function dumpPendingMessagesToClient(conn) {
 }
 
 function parseAddress(url) {
-  return url.substr((url.indexOf('address') + 8));
+  return url.substring((url.indexOf('address') + 8), url.indexOf('&') || undefined);
 }
 
