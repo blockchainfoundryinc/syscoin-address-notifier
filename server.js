@@ -88,16 +88,17 @@ module.exports = {
 
       // setup the connection object w additional data
       conn.syscoinAddress = parseAddress(conn.url);
+      conn.id = `${conn.syscoinAddress}-${utils.getUniqueID()}`;
       if (!conn.syscoinAddress) {
         console.log('connection missing address data, kicking:', conn.url);
         conn.close();
       }
-      connectionMap[conn.syscoinAddress] = conn;
+      connectionMap[conn.id] = conn;
       dumpPendingMessagesToClient(conn);
 
       conn.on('close', function () {
         console.log("client disconnected", conn.syscoinAddress);
-        delete connectionMap[conn.syscoinAddress];
+        delete connectionMap[conn.id];
       });
     });
 

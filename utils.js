@@ -1,5 +1,7 @@
 const bitcoin = require('bitcoinjs-lib');
 const networks = require('./network.config').networks;
+var crypto = require('crypto');
+
 module.exports = {
   getInputAddressesFromVins(ins) {
     const result = [];
@@ -44,6 +46,11 @@ module.exports = {
     });
 
     return result;
+  },
+  getUniqueID() {
+    var current_date = (new Date()).valueOf().toString();
+    var random = Math.random().toString();
+    return crypto.createHash('sha1').update(current_date + random).digest('hex');
   }
 };
 
