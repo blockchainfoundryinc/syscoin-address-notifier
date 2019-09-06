@@ -59,7 +59,7 @@ async function handleRawTxMessage(topic, message, unconfirmedTxToAddressArr, con
         const message = { tx, hex: hexStr };
         conn.write(JSON.stringify({topic: 'unconfirmed', message }));
       } else if (!conn) {
-        unconfirmedTxToAddressArr.push({address, txid: tx.txid, tx });
+        unconfirmedTxToAddressArr.push({address, txid: tx.txid, tx, hexStr: hexStr });
       }
     }
   });

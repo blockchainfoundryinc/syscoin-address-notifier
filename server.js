@@ -132,7 +132,7 @@ function dumpPendingMessagesToClient(conn) {
 
   if (pendingTxForConn.length > 0) {
     pendingTxForConn.forEach( entry => {
-      conn.write(JSON.stringify({topic: 'unconfirmed', message: {tx: entry.tx, hex: entry.hex}}));
+      conn.write(JSON.stringify({topic: 'unconfirmed', message: {tx: entry.tx, hex: entry.hexStr}}));
     });
   }
 }
