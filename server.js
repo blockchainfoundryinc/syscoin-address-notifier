@@ -130,8 +130,11 @@ function dumpPendingMessagesToClient(conn) {
   conn.unconfirmedTxToAddressArr = pendingTxForConn;
   conn.blockTxArr = [ ...globalBlockTxArr ];
 
-  if (pendingTxForConn.length > 0)
-    conn.write(JSON.stringify({topic: 'unconfirmed', message: pendingTxForConn.map(entry => ({ tx: entry.tx, hex: entry.hex })) }));
+  if (pendingTxForConn.length > 0) {
+    pendingTxForConn.forEach( entry => {
+      conn.write(JSON.stringify({topic: 'unconfirmed', message: {tx: entry.tx, hex: entry.hex}}));
+    });
+  }
 }
 
 function parseAddress(url) {
