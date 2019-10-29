@@ -51,7 +51,27 @@ module.exports = {
     var current_date = (new Date()).valueOf().toString();
     var random = Math.random().toString();
     return crypto.createHash('sha1').update(current_date + random).digest('hex');
-  }
+  },
+
+  getTransactionMemo(txn) {
+    const memoHeader = Buffer.from([0xff, 0xff, 0xaf, 0xaf, 0xaa, 0xaa]);
+    let memo = null;
+    txn = txn.hex ? bitcoin.Transaction.fromHex(txn.hex) : txn;
+    for (let key = 0; key < txn.outs.length; key++) {
+      const out = txn.outs[key];
+      const chunksIn = bitcoin.script.decompile(out.script);
+      if (chunksIn[0] !== bitcoin.opcodes.OP_RETURN) {
+        continue;
+      }
+      const scriptValChunks = arraySplit(chunksIn[1], memoHeader);
+      if (scriptValChunks.length === 1) {
+        continue;
+      }
+      memo = arrayToString(scriptValChunks[1]);
+      break;
+      }
+    return memo;
+  };
 };
 
 

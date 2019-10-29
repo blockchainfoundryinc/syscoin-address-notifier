@@ -99,9 +99,9 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxToAddressArr,
     const flattenedNotificationList = {};
     toNotify.forEach(entry => {
       if (flattenedNotificationList[entry.address]) {
-        flattenedNotificationList[entry.address].push(entry.txid);
+        flattenedNotificationList[entry.address].push(entry);
       } else {
-        flattenedNotificationList[entry.address] = [entry.txid];
+        flattenedNotificationList[entry.address] = [entry];
       }
     });
 
@@ -110,7 +110,21 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxToAddressArr,
     Object.keys(flattenedNotificationList).forEach(key => {
       const entry = flattenedNotificationList[key];
       if (conn && conn.syscoinAddress === key) {
-        conn.write(JSON.stringify({topic: 'confirmed', message: entry}));
+        // TODO: add the following field into message: amount, buyerAddress, memo
+        const parsed = JSON.parse(entry.tx);
+        if (parsed.systx && (parse.systx.txtype == 'assetsend' || parse.systx.txtype == 'assetallocationsend')) {
+          var allocations = parse.systx.allocations;
+          var sum = 0;
+          allocations.forEach(i => {
+            if (i.address == key) {
+              sum+=i.amount;
+            }
+          });
+          var memo = getTransactionMemo(tx);
+          conn.write(JSON.stringify({topic: 'confirmed', message: {entry.txid, parse.systx.sender, key, amount, memo}}))
+        } else {
+          conn.write(JSON.stringify({topic: 'confirmed', message: entry.txid}));
+        }
       }
     });
   }
