@@ -71,7 +71,7 @@ module.exports = {
       break;
       }
     return memo;
-  };
+  }
 };
 
 
