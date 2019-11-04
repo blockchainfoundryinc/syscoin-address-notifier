@@ -95,7 +95,7 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxToAddressArr,
   });
 
   // notify clients
-  if (!conn) {
+  if (conn) {
     const flattenedNotificationList = {};
     toNotify.forEach(entry => {
       if (flattenedNotificationList[entry.address]) {
