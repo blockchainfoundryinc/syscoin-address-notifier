@@ -113,7 +113,7 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxToAddressArr,
         if (entry[0].tx.systx && entry[0].tx.systx.txtype == 'assetallocationsend') {
           var allocations = entry[0].tx.systx.allocations;
           var memo = utils.getTransactionMemo(entry[0].tx);
-          conn.write(JSON.stringify({topic: 'confirmed', message: {txid: entry[0].txid, address: entry[0].tx.systx.sender, asset_guid: entry[0].tx.systx.asset_guid, amount: entry[0].tx.systx.total, memo: memo}}))
+          conn.write(JSON.stringify({topic: 'confirmed', message: {txid: entry[0].txid, sender: entry[0].tx.systx.sender, receivers: entry[0].tx.systx.allocations, asset_guid: entry[0].tx.systx.asset_guid, amount: entry[0].tx.systx.total, memo: memo}}))
         } else {
           conn.write(JSON.stringify({topic: 'confirmed', message: entry[0].txid}));
         }
