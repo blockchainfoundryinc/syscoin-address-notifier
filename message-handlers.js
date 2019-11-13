@@ -5,14 +5,7 @@ const sysTxParser = require('./sys-tx-parser');
 const confirmedTxPruneHeight = 3; // number of blocks after which we discard confirmed tx data
 const rpcServices = require("@syscoin/syscoin-js").rpcServices;
 const SyscoinRpcClient = require("@syscoin/syscoin-js").SyscoinRpcClient;
-const config = {
-  host: "localhost",
-  rpcPort: 8368, // This is the port used in the docker-based integration tests, change at your peril
-  username: "u",
-  password: "p",
-  logLevel: 'error'
-};
-const client = new SyscoinRpcClient(config);
+const client = new SyscoinRpcClient(require('./config').rpc);
 
 async function handleRawTxMessage(topic, message, unconfirmedTxToAddressArr, conn) {
   let hexStr = message.toString('hex');

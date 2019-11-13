@@ -10,7 +10,7 @@ Installation
 `git clone http://www.github.com/blockchainfoundryinc/syscoin-address-notifier`
 `cd syscoin-address-notifier`
 `npm install`
-`npm run build`
+`npm run start`
 
 Configuration
 -------------
@@ -18,7 +18,11 @@ RPC configurations are in both server.js and message-handler.js.
 
 Subscribing
 -----------
-Applications can subscribe to syscoin-address-notifier via websocket and pass in address as qstring
+Applications can subscribe to syscoin-address-notifier via websocket and pass in address as qstring:
+```
+ws|wss://server:port?address=syscoin_address
+```
+If you are using SockJS as the client you can use `http|https`.
 
 Sample Output
 -------------
