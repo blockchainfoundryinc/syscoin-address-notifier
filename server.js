@@ -11,14 +11,7 @@ const messageHander = require('./message-handlers');
 const TOPIC = require('./message-topic');
 const rpcServices = require("@syscoin/syscoin-js").rpcServices;
 const SyscoinRpcClient = require("@syscoin/syscoin-js").SyscoinRpcClient;
-const config = {
-  host: "localhost",
-  rpcPort: 8368, // This is the port used in the docker-based integration tests, change at your peril
-  username: "u",
-  password: "p",
-  logLevel: 'error'
-};
-const client = new SyscoinRpcClient(config);
+const client = new SyscoinRpcClient(require('./config').rpc);
 
 let globalUnconfirmedTxToAddressArr = [];
 let globalBlockTxArr = [];

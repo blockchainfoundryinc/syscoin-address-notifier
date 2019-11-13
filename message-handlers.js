@@ -5,14 +5,7 @@ const sysTxParser = require('./sys-tx-parser');
 const confirmedTxPruneHeight = 3; // number of blocks after which we discard confirmed tx data
 const rpcServices = require("@syscoin/syscoin-js").rpcServices;
 const SyscoinRpcClient = require("@syscoin/syscoin-js").SyscoinRpcClient;
-const config = {
-  host: "localhost",
-  rpcPort: 8368, // This is the port used in the docker-based integration tests, change at your peril
-  username: "u",
-  password: "p",
-  logLevel: 'error'
-};
-const client = new SyscoinRpcClient(config);
+const client = new SyscoinRpcClient(require('./config').rpc);
 
 async function handleRawTxMessage(topic, message, unconfirmedTxToAddressArr, conn) {
   let hexStr = message.toString('hex');
@@ -99,9 +92,9 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxToAddressArr,
     const flattenedNotificationList = {};
     toNotify.forEach(entry => {
       if (flattenedNotificationList[entry.address]) {
-        flattenedNotificationList[entry.address].push(entry.txid);
+        flattenedNotificationList[entry.address].push(entry);
       } else {
-        flattenedNotificationList[entry.address] = [entry.txid];
+        flattenedNotificationList[entry.address] = [entry];
       }
     });
 
@@ -110,7 +103,13 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxToAddressArr,
     Object.keys(flattenedNotificationList).forEach(key => {
       const entry = flattenedNotificationList[key];
       if (conn && conn.syscoinAddress === key) {
-        conn.write(JSON.stringify({topic: 'confirmed', message: entry}));
+        if (entry[0].tx.systx && entry[0].tx.systx.txtype == 'assetallocationsend') {
+          var allocations = entry[0].tx.systx.allocations;
+          var memo = utils.getTransactionMemo(entry[0].tx);
+          conn.write(JSON.stringify({topic: 'confirmed', message: {txid: entry[0].txid, sender: entry[0].tx.systx.sender, receivers: entry[0].tx.systx.allocations, asset_guid: entry[0].tx.systx.asset_guid, amount: entry[0].tx.systx.total, memo: memo}}))
+        } else {
+          conn.write(JSON.stringify({topic: 'confirmed', message: entry[0].txid}));
+        }
       }
     });
   }
