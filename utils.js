@@ -127,11 +127,11 @@ module.exports = {
       if (chunksIn[0] !== bitcoin.opcodes.OP_RETURN) {
         continue;
       }
-      const scriptValChunks = arraySplit(chunksIn[1], memoHeader);
+      const scriptValChunks = this.arraySplit(chunksIn[1], memoHeader);
       if (scriptValChunks.length === 1) {
         continue;
       }
-      memo = arrayToString(scriptValChunks[1]);
+      memo = this.arrayToString(scriptValChunks[1]);
       break;
       }
     return memo;
