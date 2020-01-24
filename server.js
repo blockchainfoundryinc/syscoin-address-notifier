@@ -1,6 +1,5 @@
 const http = require('http');
 const arraync = require('arraync');
-const sockjs = require('sockjs');
 const zmq = require('zeromq');
 const sock = zmq.socket('sub');
 const bitcoin = require('bitcoinjs-lib');
@@ -11,7 +10,10 @@ const messageHander = require('./message-handlers');
 const TOPIC = require('./message-topic');
 const rpcServices = require("@syscoin/syscoin-js").rpcServices;
 const SyscoinRpcClient = require("@syscoin/syscoin-js").SyscoinRpcClient;
-const client = new SyscoinRpcClient(require('./config').rpc);
+const config = require('./config');
+const client = new SyscoinRpcClient(config.rpc);
+const io = require('socket.io')(config.ws_port);
+
 
 let globalUnconfirmedTxToAddressArr = [];
 let globalBlockTxArr = [];
@@ -72,32 +74,33 @@ module.exports = {
       }
     });
 
-    // create websocket server
-    const websocketServer = sockjs.createServer({prefix: '/zmq'});
-
     // setup websocket
-    websocketServer.on('connection', function (conn) {
-      console.log("client connected", parseAddress(conn.url));
+    io.on('connection', function (socket) {
+      console.log("client connected", socket.conn.id);
 
-      // setup the connection object w additional data
-      conn.syscoinAddress = parseAddress(conn.url);
-      conn.id = `${conn.syscoinAddress}-${utils.getUniqueID()}`;
-      if (!conn.syscoinAddress) {
-        console.log('connection missing address data, kicking:', conn.url);
-        conn.close();
+      var handshakeData = socket.request;
+      const address = handshakeData._query['address'];
+      console.log('setaddress', socket.conn.id, address);
+      socket.syscoinAddress = address;
+
+      if (!socket.syscoinAddress) {
+        console.log('connection missing address data, kicking:', socket.request.url);
+        socket.disconnect();
       }
-      connectionMap[conn.id] = conn;
-      dumpPendingMessagesToClient(conn);
+      connectionMap[socket.conn.id] = socket;
 
-      conn.on('close', function () {
-        console.log("client disconnected", conn.syscoinAddress);
-        delete connectionMap[conn.id];
+      // TODO: REENSTATE THIS!
+      //dumpPendingMessagesToClient(socket);
+
+      socket.on('disconnect', function () {
+        console.log("client disconnected", socket.syscoinAddress);
+        delete connectionMap[socket.conn.id];
       });
     });
 
-    const server = http.createServer();
-    websocketServer.installHandlers(server);
-    server.listen(config.ws_port, '0.0.0.0');
+    //const server = http.createServer();
+    //websocketServer.installHandlers(server);
+    //server.listen(config.ws_port, '0.0.0.0');
 
     // let external processes know we're ready
     onReady();
