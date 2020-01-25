@@ -1,5 +1,4 @@
 const TOPIC = require('./message-topic');
-const {table} = require('table');
 
 function logState(txData, connMap) {
 

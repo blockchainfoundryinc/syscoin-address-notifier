@@ -1,17 +1,9 @@
-const http = require('http');
-const arraync = require('arraync');
 const zmq = require('zeromq');
 const sock = zmq.socket('sub');
-const bitcoin = require('bitcoinjs-lib');
-const utils = require('./utils');
 const { logState, handleDevLogging } = require('./logging');
-const printObject = require('print-object');
 const messageHander = require('./message-handlers');
 const TOPIC = require('./message-topic');
-const rpcServices = require("@syscoin/syscoin-js").rpcServices;
-const SyscoinRpcClient = require("@syscoin/syscoin-js").SyscoinRpcClient;
 const config = require('./config');
-const client = new SyscoinRpcClient(config.rpc);
 const io = require('socket.io')(config.ws_port);
 const txData = {
   unconfirmedTxToAddressArr: [],
