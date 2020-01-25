@@ -50,7 +50,23 @@ function dumpPendingMessagesToClient(socket) {
 
   if (pendingTxForSocket.length > 0) {
     pendingTxForSocket.forEach( entry => {
-      socket.emit(socket.syscoinAddress, JSON.stringify({topic: 'unconfirmed', message: {tx: entry.tx, hex: entry.hexStr}}));
+      let message = {
+        tx: entry.tx,
+        hex: entry.hex
+      };
+
+      if(entry.tx.systx) {
+        message = {
+          ...message,
+          status: entry.status,
+          balance: entry.balances[socket.syscoinAddress]
+        }
+      }
+
+      socket.emit(socket.syscoinAddress, JSON.stringify({
+        topic: 'unconfirmed',
+        message
+      }));
     });
   }
 }
@@ -86,7 +102,7 @@ function handleIoConnection(socket) {
   dumpPendingMessagesToClient(socket);
 
   socket.on('disconnect', function () {
-    console.log("client disconnected", socket.syscoinAddress);
+    console.log("client disconnected", `${socket.syscoinAddress}-${socket.conn.id}`);
     delete connectionMap[`${socket.syscoinAddress}-${socket.conn.id}`];
   });
 }

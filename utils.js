@@ -1,6 +1,10 @@
 const bitcoin = require('bitcoinjs-lib');
 const networks = require('./network.config').networks;
-var crypto = require('crypto');
+const crypto = require('crypto');
+const config = require('./config');
+const rpcServices = require("@syscoin/syscoin-js").rpcServices;
+const SyscoinRpcClient = require("@syscoin/syscoin-js").SyscoinRpcClient;
+let rpc, client;
 
 function getInputAddressesFromVins(ins) {
   const result = [];
@@ -143,6 +147,44 @@ function getTransactionMemo(txn) {
   return memo;
 }
 
+async function checkSptTxStatus(unconfirmedTxEntry, io) {
+  const assetAllocationVerifyZdag = await getRpc().rpc.assetAllocationVerifyZdag(unconfirmedTxEntry.txid).call();
+  unconfirmedTxEntry.status = assetAllocationVerifyZdag.status;
+
+  let assetAllocationInfoRequests = [];
+  unconfirmedTxEntry.addresses.forEach(address => {
+    assetAllocationInfoRequests.push(getRpc().rpc.assetAllocationInfo(unconfirmedTxEntry.tx.systx.asset_guid, address));
+  });
+  let assetAllocationInfoResponses = await getRpc().client.batch(assetAllocationInfoRequests);
+  assetAllocationInfoResponses.forEach((response, index) => {
+    const address = unconfirmedTxEntry.addresses[index];
+    unconfirmedTxEntry.balances[address] = response;
+
+    //broadcast zdag update to client
+    const message = {
+      tx: unconfirmedTxEntry.tx,
+      hex: unconfirmedTxEntry.hex,
+      status: unconfirmedTxEntry.status,
+      balance: unconfirmedTxEntry.balances[address]
+    };
+    console.log('ZDAG UPDATE:', message.tx.txid, message.status, message.balance.symbol, message.balance.asset_guid, message.balance.balance, message.balance.balance_zdag);
+    io.sockets.emit(unconfirmedTxEntry.addresses[index], {
+      topic: 'unconfirmed',
+      message
+    });
+  });
+
+  return unconfirmedTxEntry;
+}
+
+function getRpc() {
+  if(!rpc) {
+    client = new SyscoinRpcClient(config.rpc);
+    rpc = rpcServices(client.callRpc);
+  }
+  return {rpc, client};
+}
+
 module.exports = {
   getInputAddressesFromVins,
   getOutputAddressesFromVouts,
@@ -150,6 +192,8 @@ module.exports = {
   arraySplit,
   arrayStartsWith,
   arrayToString,
-  getTransactionMemo
+  getTransactionMemo,
+  getRpc,
+  checkSptTxStatus
 };
 

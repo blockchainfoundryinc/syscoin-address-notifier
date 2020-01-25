@@ -1,13 +1,10 @@
 const bitcoin = require('bitcoinjs-lib');
 const utils = require('./utils');
 const printObject = require('print-object');
+const config = require('./config');
 const sysTxParser = require('./sys-tx-parser');
 const confirmedTxPruneHeight = 3; // number of blocks after which we discard confirmed tx data
-const rpcServices = require("@syscoin/syscoin-js").rpcServices;
-const SyscoinRpcClient = require("@syscoin/syscoin-js").SyscoinRpcClient;
-const config = require('./config');
-const client = new SyscoinRpcClient(config.rpc);
-
+const rpc = utils.getRpc().rpc;
 
 async function handleRawTxMessage(topic, message, txData, io) {
   let hexStr = message.toString('hex');
@@ -18,7 +15,7 @@ async function handleRawTxMessage(topic, message, txData, io) {
   let inAddresses = utils.getInputAddressesFromVins(tx.ins);
   let outAddresses = utils.getOutputAddressesFromVouts(tx.outs);
   try {
-    tx = await rpcServices(client.callRpc).decodeRawTransaction(hexStr).call();
+    tx = await rpc.decodeRawTransaction(hexStr).call();
     if (!tx.txid) {
       console.error('\nERROR! Undef txid!', tx, hexStr, '\n');
     }
@@ -49,22 +46,24 @@ async function handleRawTxMessage(topic, message, txData, io) {
           ...payload,
           time: Date.now(),
           status: null,
-          balance: null
+          balances: [],
+          timeout: null
         };
+
+        payload.timeout = setTimeout(utils.checkSptTxStatus, config.zdag_check_time * 1000, payload, io);
       }
       txData.unconfirmedTxToAddressArr.push(payload);
     }
 
     console.log('|| UNCONFIRMED NOTIFY:', address, ' of ', tx.txid);
-    const message = { tx, hex: hexStr };
-    io.sockets.emit(address, JSON.stringify({topic: 'unconfirmed', message }));
+    io.sockets.emit(address, JSON.stringify({topic: 'unconfirmed', message:  { tx, hex: hexStr } }));
   });
   return null;
 }
 
 async function handleHashBlockMessage(topic, message, txData, io) {
   let hash = message.toString('hex');
-  let block = await rpcServices(client.callRpc).getBlock(hash).call();
+  let block = await rpc.getBlock(hash).call();
   let removedUnconfirmedTxCount = 0;
 
   // TRANSACTION MGMT
@@ -83,6 +82,9 @@ async function handleHashBlockMessage(topic, message, txData, io) {
     if (txMatch) {
       removedUnconfirmedTxCount++;
       toNotify.push(entry);
+
+      // kill any intervals related to spt status check (zdag)
+      clearTimeout(entry.timeout);
       return false;
     } else {
       return true;

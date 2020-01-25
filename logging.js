@@ -6,14 +6,24 @@ function logState(txData, connMap) {
   console.log(`${prefix}=====`);
   console.log("Connections");
   console.log(Object.keys(connMap));
+
   console.log("Address Maps");
-  Object.values(txData.unconfirmedTxToAddressArr).forEach(entry => {
-    console.log(entry.addresses, entry.txid, entry.status);
-  });
-  console.log("Block History");
-  Object.values(txData.blockTxArr).forEach(block => {
-    console.log(`${block.height} ${block.txs}`);
-  });
+  if(txData.unconfirmedTxToAddressArr.length > 0) {
+    Object.values(txData.unconfirmedTxToAddressArr).forEach(entry => {
+      console.log(entry.addresses, entry.txid, entry.status);
+    });
+  } else {
+    console.log('[]');
+  }
+
+  if(txData.blockTxArr.length > 0) {
+    console.log("Block History");
+    Object.values(txData.blockTxArr).forEach(block => {
+      console.log(`${block.height} ${block.txs}`);
+    });
+  } else {
+    console.log('[]');
+  }
 
   console.log(`${prefix}=====\n`);
 }
@@ -37,7 +47,6 @@ function handleDevLogging(sock) {
     });
   }
 }
-
 
 module.exports = {
   handleDevLogging,
