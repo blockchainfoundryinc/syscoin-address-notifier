@@ -31,17 +31,7 @@ async function handleRawTxMessage(topic, message, txData, io) {
   }
 
   let affectedAddresses = [ ...inAddresses, ...outAddresses, ...sysTxAddresses ];
-
-  if(tx.systx) {
-    txData.sptTxArr[tx.txid] = {
-      txid: tx.txid,
-      addresses: affectedAddresses,
-      systx: tx.systx,
-      time: Date.now(),
-      status: null,
-      balance: null
-    };
-  }
+  affectedAddresses = affectedAddresses.filter((a, b) => affectedAddresses.indexOf(a) === b);
 
   if (!process.env.DEV && !socket) {
     const prefix = socket ? '|| ' : '';
@@ -52,12 +42,22 @@ async function handleRawTxMessage(topic, message, txData, io) {
   // map address to tx
   affectedAddresses.forEach(address => {
     // see if we already have an entry for this address/tx
-    if (!txData.unconfirmedTxToAddressArr.find(entry => entry.address === address && entry.txid === tx.txid)) {
-      txData.unconfirmedTxToAddressArr.push({address, txid: tx.txid, tx: tx , hex: hexStr });
-      console.log('|| UNCONFIRMED NOTIFY:', address, ' of ', tx.txid);
-      const message = { tx, hex: hexStr };
-      io.sockets.emit(address, JSON.stringify({topic: 'unconfirmed', message }));
+    if (!txData.unconfirmedTxToAddressArr.find(entry => entry.txid === tx.txid)) {
+      let payload = {addresses: affectedAddresses, txid: tx.txid, tx: tx , hex: hexStr };
+      if(tx.systx) {
+        payload = {
+          ...payload,
+          time: Date.now(),
+          status: null,
+          balance: null
+        };
+      }
+      txData.unconfirmedTxToAddressArr.push(payload);
     }
+
+    console.log('|| UNCONFIRMED NOTIFY:', address, ' of ', tx.txid);
+    const message = { tx, hex: hexStr };
+    io.sockets.emit(address, JSON.stringify({topic: 'unconfirmed', message }));
   });
   return null;
 }
@@ -66,7 +66,6 @@ async function handleHashBlockMessage(topic, message, txData, io) {
   let hash = message.toString('hex');
   let block = await rpcServices(client.callRpc).getBlock(hash).call();
   let removedUnconfirmedTxCount = 0;
-  let removedSptTxCount = 0;
 
   // TRANSACTION MGMT
   // remove old txs from confirmed array
@@ -90,31 +89,23 @@ async function handleHashBlockMessage(topic, message, txData, io) {
     }
   });
 
-  // remove matching spt tx entries
-  txData.sptTxArr = txData.sptTxArr.filter(entry => {
-    let txMatch = txData.blockTxArr.find(block => block.txs.find(txid => entry.txid === txid));
-    if (txMatch) {
-      removedSptTxCount++;
-      return false;
-    } else {
-      return true;
-    }
-  });
-
   // notify clients
   const flattenedNotificationList = {};
   toNotify.forEach(entry => {
-    if (flattenedNotificationList[entry.address]) {
-      flattenedNotificationList[entry.address].push(entry);
-    } else {
-      flattenedNotificationList[entry.address] = [entry];
-    }
+    entry.addresses.forEach(address =>{
+      if (flattenedNotificationList[address]) {
+        flattenedNotificationList[address].push(entry);
+      } else {
+        flattenedNotificationList[address] = [entry];
+      }
+    });
   });
-
-  if (Object.keys(flattenedNotificationList).length > 0) console.log('|| CONFIRMED NOTIFY:', printObject(flattenedNotificationList));
 
   Object.keys(flattenedNotificationList).forEach(key => {
     const entry = flattenedNotificationList[key];
+    let  txids = [];
+    entry.forEach(tx => txids.push(tx.txid));
+    console.log('|| CONFIRMED NOTIFY:', key, 'of', txids);
     if (entry[0].tx.systx && entry[0].tx.systx.txtype === 'assetallocationsend') {
       let allocations = entry[0].tx.systx.allocations;
       let memo = utils.getTransactionMemo(entry[0].tx);
@@ -145,9 +136,6 @@ async function handleHashBlockMessage(topic, message, txData, io) {
 
     if (removedUnconfirmedTxCount > 0)
       console.log(`${prefix} Removed ${removedUnconfirmedTxCount} ADDRESS entries`);
-
-    if (removedSptTxCount > 0)
-      console.log(`${prefix} Removed ${removedUnconfirmedTxCount} SPT entries`);
   }
 
   return { unconfirmedTxToAddressArr: txData.unconfirmedTxToAddressArr, confirmedTxIds: txData.blockTxArr };

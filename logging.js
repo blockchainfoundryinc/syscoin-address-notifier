@@ -9,11 +9,7 @@ function logState(txData, connMap) {
   console.log(Object.keys(connMap));
   console.log("Address Maps");
   Object.values(txData.unconfirmedTxToAddressArr).forEach(entry => {
-    console.log(entry.address, entry.txid);
-  });
-  console.log("Zdag Maps");
-  Object.values(txData.sptTxArr).forEach(tx => {
-    console.log(`${tx.txid} ${tx.status}`);
+    console.log(entry.addresses, entry.txid, entry.status);
   });
   console.log("Block History");
   Object.values(txData.blockTxArr).forEach(block => {

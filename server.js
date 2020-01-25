@@ -15,8 +15,7 @@ const client = new SyscoinRpcClient(config.rpc);
 const io = require('socket.io')(config.ws_port);
 const txData = {
   unconfirmedTxToAddressArr: [],
-  blockTxArr: [],
-  sptTxArr: []
+  blockTxArr: []
 };
 let connectionMap = {};
 
@@ -87,7 +86,7 @@ module.exports = {
 function dumpPendingMessagesToClient(socket) {
   let pendingTxForSocket = [];
   txData.unconfirmedTxToAddressArr.forEach(entry => {
-    if (entry.address === socket.syscoinAddress) {
+    if (entry.addresses.includes(socket.syscoinAddress)) {
       pendingTxForSocket.push(entry);
     }
   });
