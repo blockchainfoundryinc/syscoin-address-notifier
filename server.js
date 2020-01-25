@@ -38,45 +38,10 @@ module.exports = {
     sock.subscribe(TOPIC.HASH_BLOCK);
 
     // setup a persistent handler
-    sock.on('message', async (topic, message) => {
-      switch (topic.toString('utf8')) {
-        case TOPIC.RAW_TX:
-          await messageHander.handleRawTxMessage(topic, message, txData, io);
-          logState(txData, connectionMap);
-          break;
-
-        case TOPIC.HASH_BLOCK:
-          let res = await messageHander.handleHashBlockMessage(topic, message, txData, io);
-          txData.unconfirmedTxToAddressArr = res.unconfirmedTxToAddressArr;
-          txData.blockTxArr = res.confirmedTxIds;
-          logState(txData, connectionMap);
-          break;
-      }
-    });
+    sock.on('message', handleZmqSockMessage);
 
     // setup websocket
-    io.on('connection', function (socket) {
-      console.log("client connected", socket.conn.id);
-
-      // associate client data with socket connection
-      const handshakeData = socket.request;
-      const address = handshakeData._query['address'];
-      console.log('setaddress', socket.conn.id, address);
-      socket.syscoinAddress = address;
-      connectionMap[`${socket.syscoinAddress}-${socket.conn.id}`] = socket;
-
-      if (!socket.syscoinAddress) {
-        console.log('connection missing address data, kicking:', socket.request.url);
-        socket.disconnect();
-      }
-
-      dumpPendingMessagesToClient(socket);
-
-      socket.on('disconnect', function () {
-        console.log("client disconnected", socket.syscoinAddress);
-        delete connectionMap[`${socket.syscoinAddress}-${socket.conn.id}`];
-      });
-    });
+    io.on('connection', handleIoConnection);
 
     // let external processes know we're ready
     onReady();
@@ -96,4 +61,40 @@ function dumpPendingMessagesToClient(socket) {
       socket.emit(socket.syscoinAddress, JSON.stringify({topic: 'unconfirmed', message: {tx: entry.tx, hex: entry.hexStr}}));
     });
   }
+}
+
+async function handleZmqSockMessage(topic, message) {
+  switch (topic.toString('utf8')) {
+    case TOPIC.RAW_TX:
+      await messageHander.handleRawTxMessage(topic, message, txData, io);
+      logState(txData, connectionMap);
+      break;
+
+    case TOPIC.HASH_BLOCK:
+      let res = await messageHander.handleHashBlockMessage(topic, message, txData, io);
+      txData.unconfirmedTxToAddressArr = res.unconfirmedTxToAddressArr;
+      txData.blockTxArr = res.confirmedTxIds;
+      logState(txData, connectionMap);
+      break;
+  }
+}
+
+function handleIoConnection(socket) {
+  // associate client data with socket connection
+  const address = socket.request._query['address'];
+  console.log("client connected", socket.conn.id, address);
+  socket.syscoinAddress = address;
+  connectionMap[`${socket.syscoinAddress}-${socket.conn.id}`] = socket;
+
+  if (!socket.syscoinAddress) {
+    console.log('connection missing address data, kicking:', socket.request.url);
+    socket.disconnect();
+  }
+
+  dumpPendingMessagesToClient(socket);
+
+  socket.on('disconnect', function () {
+    console.log("client disconnected", socket.syscoinAddress);
+    delete connectionMap[`${socket.syscoinAddress}-${socket.conn.id}`];
+  });
 }
