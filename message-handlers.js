@@ -36,6 +36,7 @@ async function handleRawTxMessage(topic, message, txData, io) {
     txData.sptTxArr[tx.txid] = {
       txid: tx.txid,
       addresses: affectedAddresses,
+      systx: tx.systx,
       time: Date.now(),
       status: null,
       balance: null
