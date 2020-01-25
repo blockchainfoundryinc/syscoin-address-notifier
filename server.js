@@ -13,21 +13,19 @@ const SyscoinRpcClient = require("@syscoin/syscoin-js").SyscoinRpcClient;
 const config = require('./config');
 const client = new SyscoinRpcClient(config.rpc);
 const io = require('socket.io')(config.ws_port);
-
-
-let globalUnconfirmedTxToAddressArr = [];
-let globalBlockTxArr = [];
+const txData = {
+  unconfirmedTxToAddressArr: [],
+  blockTxArr: [],
+  sptTxArr: []
+};
 let connectionMap = {};
 
 module.exports = {
-  sysClient: client,
-  TOPIC,
-  blockTxArr: globalBlockTxArr,
   startServer(config = {zmq_address: null, ws_port: null},
               onReady = () => {},
               onReadyToIndex = () => {},
               onError = () => {}) {
-    console.log("ZQMSocket starting with config:", JSON.stringify(config));
+    console.log("Zdag Server starting with config:", JSON.stringify(config));
 
     if (typeof config.zmq_address !== 'string' && typeof config.ws_port !== 'number') {
       console.log("Bad config. Exiting.");
@@ -44,32 +42,15 @@ module.exports = {
     sock.on('message', async (topic, message) => {
       switch (topic.toString('utf8')) {
         case TOPIC.RAW_TX:
-          await messageHander.handleRawTxMessage(topic, message, globalUnconfirmedTxToAddressArr);
-          await Object.values(connectionMap).forEachAsync(async socket => {
-            await messageHander.handleRawTxMessage(topic, message, socket.unconfirmedTxToAddressArr, socket);
-            // logState(conn, conn.unconfirmedTxToAddressArr, conn.blockTxArr, connectionMap);
-            return null;
-          });
-
-          logState(null, globalUnconfirmedTxToAddressArr, globalBlockTxArr, connectionMap);
-
+          await messageHander.handleRawTxMessage(topic, message, txData, io);
+          logState(null, txData.unconfirmedTxToAddressArr, txData.blockTxArr, connectionMap);
           break;
 
         case TOPIC.HASH_BLOCK:
-          // setTimeout(doTimeout, 500, topic, message, unconfirmedTxMap, globalUnconfirmedTxToAddressArr);
-          let res = await doTimeout(topic, message, globalUnconfirmedTxToAddressArr, globalBlockTxArr);
-          globalUnconfirmedTxToAddressArr = res.unconfirmedTxToAddressArr;
-          globalBlockTxArr = res.confirmedTxIds;
-          await Object.values(connectionMap).forEachAsync(async socket => {
-            let res = await doTimeout(topic, message, socket.unconfirmedTxToAddressArr, socket.blockTxArr, socket);
-            socket.unconfirmedTxToAddressArr = res.unconfirmedTxToAddressArr;
-            socket.blockTxArr = res.confirmedTxIds;
-            //logState(conn, conn.unconfirmedTxToAddressArr, conn.blockTxArr, connectionMap);
-            return null;
-          });
-
-          logState(null, globalUnconfirmedTxToAddressArr, globalBlockTxArr, connectionMap);
-
+          let res = await messageHander.handleHashBlockMessage(topic, message, txData.unconfirmedTxToAddressArr, txData.blockTxArr, io);
+          txData.unconfirmedTxToAddressArr = res.unconfirmedTxToAddressArr;
+          txData.blockTxArr = res.confirmedTxIds;
+          logState(null, txData.unconfirmedTxToAddressArr, txData.blockTxArr, connectionMap);
           break;
       }
     });
@@ -103,24 +84,13 @@ module.exports = {
   }
 };
 
-async function doTimeout(topic, message, unconfirmedTxToAddressArr, blockTxArr, socket) {
-  if (socket) {
-    return await messageHander.handleHashBlockMessage(topic, message, unconfirmedTxToAddressArr, blockTxArr, socket);
-  } else {
-    return await messageHander.handleHashBlockMessage(topic, message, unconfirmedTxToAddressArr, blockTxArr);
-  }
-}
-
 function dumpPendingMessagesToClient(socket) {
   let pendingTxForSocket = [];
-  globalUnconfirmedTxToAddressArr.forEach(entry => {
+  txData.unconfirmedTxToAddressArr.forEach(entry => {
     if (entry.address === socket.syscoinAddress) {
       pendingTxForSocket.push(entry);
     }
   });
-
-  socket.unconfirmedTxToAddressArr = pendingTxForSocket;
-  socket.blockTxArr = [ ...globalBlockTxArr ];
 
   if (pendingTxForSocket.length > 0) {
     pendingTxForSocket.forEach( entry => {
