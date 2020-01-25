@@ -33,7 +33,13 @@ async function handleRawTxMessage(topic, message, txData, io) {
   let affectedAddresses = [ ...inAddresses, ...outAddresses, ...sysTxAddresses ];
 
   if(tx.systx) {
-    //TODO: add tx to txData.
+    txData.sptTxArr[tx.txid] = {
+      txid: tx.txid,
+      addresses: affectedAddresses,
+      time: Date.now(),
+      status: null,
+      balance: null
+    };
   }
 
   if (!process.env.DEV && !socket) {
@@ -55,28 +61,39 @@ async function handleRawTxMessage(topic, message, txData, io) {
   return null;
 }
 
-async function handleHashBlockMessage(topic, message, unconfirmedTxToAddressArr, blockTxArr, io) {
+async function handleHashBlockMessage(topic, message, txData, io) {
   let hash = message.toString('hex');
   let block = await rpcServices(client.callRpc).getBlock(hash).call();
-  let removeArrCount = 0;
-  let removeTxCount = 0;
+  let removedUnconfirmedTxCount = 0;
+  let removedSptTxCount = 0;
 
   // TRANSACTION MGMT
   // remove old txs from confirmed array
-  blockTxArr = blockTxArr.filter(tx => block.height - tx.height < confirmedTxPruneHeight);
+  txData.blockTxArr = txData.blockTxArr.filter(tx => block.height - tx.height < confirmedTxPruneHeight);
 
   // add new txs to it in memo-ized format
-  blockTxArr.push({ height: block.height, hash: block.hash, txs: block.tx });
+  txData.blockTxArr.push({ height: block.height, hash: block.hash, txs: block.tx });
 
   // ADDRESS MGMT
-  let toNotify = []; //only used if we have a conn
+  let toNotify = [];
 
-  // remove matching map address entries
-  unconfirmedTxToAddressArr = unconfirmedTxToAddressArr.filter(entry => {
-    let txMatch = blockTxArr.find(block => block.txs.find(txid => entry.txid === txid));
+  // remove matching unconfirmed tx address entries
+  txData.unconfirmedTxToAddressArr = txData.unconfirmedTxToAddressArr.filter(entry => {
+    let txMatch = txData.blockTxArr.find(block => block.txs.find(txid => entry.txid === txid));
     if (txMatch) {
-      removeArrCount++;
+      removedUnconfirmedTxCount++;
       toNotify.push(entry);
+      return false;
+    } else {
+      return true;
+    }
+  });
+
+  // remove matching spt tx entries
+  txData.sptTxArr = txData.sptTxArr.filter(entry => {
+    let txMatch = txData.blockTxArr.find(block => block.txs.find(txid => entry.txid === txid));
+    if (txMatch) {
+      removedSptTxCount++;
       return false;
     } else {
       return true;
@@ -125,11 +142,14 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxToAddressArr,
     console.log(prefix + '>> Block hash:' + block.hash);
     console.log(prefix + '>> Contains transactions:' + block.tx);
 
-    if (removeArrCount > 0 || removeTxCount > 0)
-      console.log(`${prefix} Removed ${removeArrCount} ADDRESS entries`);
+    if (removedUnconfirmedTxCount > 0)
+      console.log(`${prefix} Removed ${removedUnconfirmedTxCount} ADDRESS entries`);
+
+    if (removedSptTxCount > 0)
+      console.log(`${prefix} Removed ${removedUnconfirmedTxCount} SPT entries`);
   }
 
-  return { unconfirmedTxToAddressArr, confirmedTxIds: blockTxArr };
+  return { unconfirmedTxToAddressArr: txData.unconfirmedTxToAddressArr, confirmedTxIds: txData.blockTxArr };
 }
 
 module.exports = {

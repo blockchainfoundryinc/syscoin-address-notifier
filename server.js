@@ -43,14 +43,14 @@ module.exports = {
       switch (topic.toString('utf8')) {
         case TOPIC.RAW_TX:
           await messageHander.handleRawTxMessage(topic, message, txData, io);
-          logState(null, txData.unconfirmedTxToAddressArr, txData.blockTxArr, connectionMap);
+          logState(txData, connectionMap);
           break;
 
         case TOPIC.HASH_BLOCK:
-          let res = await messageHander.handleHashBlockMessage(topic, message, txData.unconfirmedTxToAddressArr, txData.blockTxArr, io);
+          let res = await messageHander.handleHashBlockMessage(topic, message, txData, io);
           txData.unconfirmedTxToAddressArr = res.unconfirmedTxToAddressArr;
           txData.blockTxArr = res.confirmedTxIds;
-          logState(null, txData.unconfirmedTxToAddressArr, txData.blockTxArr, connectionMap);
+          logState(txData, connectionMap);
           break;
       }
     });

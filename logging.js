@@ -1,32 +1,26 @@
 const TOPIC = require('./message-topic');
 const {table} = require('table');
 
-function logState(addr, unconfirmed, blocks, connMap) {
+function logState(txData, connMap) {
 
-  const prefix = addr ? '|| ' : '';
+  const prefix = '';
   console.log(`${prefix}=====`);
   console.log("Connections");
   console.log(Object.keys(connMap));
   console.log("Address Maps");
-  Object.values(unconfirmed).forEach(entry => {
+  Object.values(txData.unconfirmedTxToAddressArr).forEach(entry => {
     console.log(entry.address, entry.txid);
-  });  console.log("Block History");
-  Object.values(blocks).forEach(block => {
+  });
+  console.log("Zdag Maps");
+  Object.values(txData.sptTxArr).forEach(tx => {
+    console.log(`${tx.txid} ${tx.status}`);
+  });
+  console.log("Block History");
+  Object.values(txData.blockTxArr).forEach(block => {
     console.log(`${block.height} ${block.txs}`);
   });
+
   console.log(`${prefix}=====\n`);
-
-  /*
-    console.log(`${prefix}ADDRESS MAP`);
-    Object.values(addr).forEach(entry => {
-      console.log(prefix, entry.address, entry.txid);
-    });
-
-    console.log(`${prefix}BLOCK MAP`);
-    Object.values(blocks).forEach(block => {
-      console.log(`${prefix}${block.height} ${block.txs}`);
-    });
-    */
 }
 
 function handleDevLogging(sock) {
