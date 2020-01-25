@@ -37,17 +37,16 @@ module.exports = {
     // connect to ZMQ
     handleDevLogging(sock);
     sock.connect(config.zmq_address);
-    sock.subscribe(TOPIC.HASH_TX);
+    sock.subscribe(TOPIC.RAW_TX);
     sock.subscribe(TOPIC.HASH_BLOCK);
 
     // setup a persistent handler
     sock.on('message', async (topic, message) => {
-      console.log(topic.toString('utf8'), message.toString('hex'));
       switch (topic.toString('utf8')) {
-        case TOPIC.HASH_TX:
-          await messageHander.handleRawTxMessage(topic, message.toString('hex'), globalUnconfirmedTxToAddressArr);
+        case TOPIC.RAW_TX:
+          await messageHander.handleRawTxMessage(topic, message, globalUnconfirmedTxToAddressArr);
           await Object.values(connectionMap).forEachAsync(async socket => {
-            await messageHander.handleRawTxMessage(topic, message.toString('hex'), socket.unconfirmedTxToAddressArr, socket);
+            await messageHander.handleRawTxMessage(topic, message, socket.unconfirmedTxToAddressArr, socket);
             // logState(conn, conn.unconfirmedTxToAddressArr, conn.blockTxArr, connectionMap);
             return null;
           });
@@ -84,7 +83,7 @@ module.exports = {
       const address = handshakeData._query['address'];
       console.log('setaddress', socket.conn.id, address);
       socket.syscoinAddress = address;
-      connectionMap[socket.conn.id] = socket;
+      connectionMap[`${socket.syscoinAddress}-${socket.conn.id}`] = socket;
 
       if (!socket.syscoinAddress) {
         console.log('connection missing address data, kicking:', socket.request.url);
@@ -95,7 +94,7 @@ module.exports = {
 
       socket.on('disconnect', function () {
         console.log("client disconnected", socket.syscoinAddress);
-        delete connectionMap[socket.conn.id];
+        delete connectionMap[`${socket.syscoinAddress}-${socket.conn.id}`];
       });
     });
 

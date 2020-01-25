@@ -8,7 +8,7 @@ const SyscoinRpcClient = require("@syscoin/syscoin-js").SyscoinRpcClient;
 const client = new SyscoinRpcClient(require('./config').rpc);
 
 async function handleRawTxMessage(topic, message, unconfirmedTxToAddressArr, socket) {
-  let hexStr = await rpcServices(client.callRpc).getRawTransaction(message).call();
+  let hexStr = message.toString('hex');
   let tx = bitcoin.Transaction.fromHex(hexStr);
 
   // get all the addresses associated w the transaction
