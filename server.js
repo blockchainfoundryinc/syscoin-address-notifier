@@ -37,16 +37,17 @@ module.exports = {
     // connect to ZMQ
     handleDevLogging(sock);
     sock.connect(config.zmq_address);
-    sock.subscribe(TOPIC.RAW_TX);
+    sock.subscribe(TOPIC.HASH_TX);
     sock.subscribe(TOPIC.HASH_BLOCK);
 
     // setup a persistent handler
     sock.on('message', async (topic, message) => {
+      console.log(topic.toString('utf8'), message.toString('hex'));
       switch (topic.toString('utf8')) {
-        case TOPIC.RAW_TX:
-          await messageHander.handleRawTxMessage(topic, message, globalUnconfirmedTxToAddressArr);
-          await Object.values(connectionMap).forEachAsync(async conn => {
-            await messageHander.handleRawTxMessage(topic, message, conn.unconfirmedTxToAddressArr, conn);
+        case TOPIC.HASH_TX:
+          await messageHander.handleRawTxMessage(topic, message.toString('hex'), globalUnconfirmedTxToAddressArr);
+          await Object.values(connectionMap).forEachAsync(async socket => {
+            await messageHander.handleRawTxMessage(topic, message.toString('hex'), socket.unconfirmedTxToAddressArr, socket);
             // logState(conn, conn.unconfirmedTxToAddressArr, conn.blockTxArr, connectionMap);
             return null;
           });
@@ -60,10 +61,10 @@ module.exports = {
           let res = await doTimeout(topic, message, globalUnconfirmedTxToAddressArr, globalBlockTxArr);
           globalUnconfirmedTxToAddressArr = res.unconfirmedTxToAddressArr;
           globalBlockTxArr = res.confirmedTxIds;
-          await Object.values(connectionMap).forEachAsync(async conn => {
-            let res = await doTimeout(topic, message, conn.unconfirmedTxToAddressArr, conn.blockTxArr, conn);
-            conn.unconfirmedTxToAddressArr = res.unconfirmedTxToAddressArr;
-            conn.blockTxArr = res.confirmedTxIds;
+          await Object.values(connectionMap).forEachAsync(async socket => {
+            let res = await doTimeout(topic, message, socket.unconfirmedTxToAddressArr, socket.blockTxArr, socket);
+            socket.unconfirmedTxToAddressArr = res.unconfirmedTxToAddressArr;
+            socket.blockTxArr = res.confirmedTxIds;
             //logState(conn, conn.unconfirmedTxToAddressArr, conn.blockTxArr, connectionMap);
             return null;
           });
@@ -78,19 +79,19 @@ module.exports = {
     io.on('connection', function (socket) {
       console.log("client connected", socket.conn.id);
 
-      var handshakeData = socket.request;
+      // associate client data with socket connection
+      const handshakeData = socket.request;
       const address = handshakeData._query['address'];
       console.log('setaddress', socket.conn.id, address);
       socket.syscoinAddress = address;
+      connectionMap[socket.conn.id] = socket;
 
       if (!socket.syscoinAddress) {
         console.log('connection missing address data, kicking:', socket.request.url);
         socket.disconnect();
       }
-      connectionMap[socket.conn.id] = socket;
 
-      // TODO: REENSTATE THIS!
-      //dumpPendingMessagesToClient(socket);
+      dumpPendingMessagesToClient(socket);
 
       socket.on('disconnect', function () {
         console.log("client disconnected", socket.syscoinAddress);
@@ -98,42 +99,33 @@ module.exports = {
       });
     });
 
-    //const server = http.createServer();
-    //websocketServer.installHandlers(server);
-    //server.listen(config.ws_port, '0.0.0.0');
-
     // let external processes know we're ready
     onReady();
   }
 };
 
-async function doTimeout(topic, message, unconfirmedTxToAddressArr, blockTxArr, conn) {
-  if (conn) {
-    return await messageHander.handleHashBlockMessage(topic, message, unconfirmedTxToAddressArr, blockTxArr, conn);
+async function doTimeout(topic, message, unconfirmedTxToAddressArr, blockTxArr, socket) {
+  if (socket) {
+    return await messageHander.handleHashBlockMessage(topic, message, unconfirmedTxToAddressArr, blockTxArr, socket);
   } else {
     return await messageHander.handleHashBlockMessage(topic, message, unconfirmedTxToAddressArr, blockTxArr);
   }
 }
 
-function dumpPendingMessagesToClient(conn) {
-  let pendingTxForConn = [];
+function dumpPendingMessagesToClient(socket) {
+  let pendingTxForSocket = [];
   globalUnconfirmedTxToAddressArr.forEach(entry => {
-    if (entry.address === conn.syscoinAddress) {
-      pendingTxForConn.push(entry);
+    if (entry.address === socket.syscoinAddress) {
+      pendingTxForSocket.push(entry);
     }
   });
 
-  conn.unconfirmedTxToAddressArr = pendingTxForConn;
-  conn.blockTxArr = [ ...globalBlockTxArr ];
+  socket.unconfirmedTxToAddressArr = pendingTxForSocket;
+  socket.blockTxArr = [ ...globalBlockTxArr ];
 
-  if (pendingTxForConn.length > 0) {
-    pendingTxForConn.forEach( entry => {
-      conn.write(JSON.stringify({topic: 'unconfirmed', message: {tx: entry.tx, hex: entry.hexStr}}));
+  if (pendingTxForSocket.length > 0) {
+    pendingTxForSocket.forEach( entry => {
+      socket.emit(socket.syscoinAddress, JSON.stringify({topic: 'unconfirmed', message: {tx: entry.tx, hex: entry.hexStr}}));
     });
   }
 }
-
-function parseAddress(url) {
-  return url.substring((url.indexOf('address') + 8), url.indexOf('&') !== -1 ? url.indexOf('&') : undefined);
-}
-

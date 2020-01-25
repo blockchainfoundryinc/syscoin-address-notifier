@@ -7,8 +7,8 @@ const rpcServices = require("@syscoin/syscoin-js").rpcServices;
 const SyscoinRpcClient = require("@syscoin/syscoin-js").SyscoinRpcClient;
 const client = new SyscoinRpcClient(require('./config').rpc);
 
-async function handleRawTxMessage(topic, message, unconfirmedTxToAddressArr, conn) {
-  let hexStr = message.toString('hex');
+async function handleRawTxMessage(topic, message, unconfirmedTxToAddressArr, socket) {
+  let hexStr = await rpcServices(client.callRpc).getRawTransaction(message).call();
   let tx = bitcoin.Transaction.fromHex(hexStr);
 
   // get all the addresses associated w the transaction
@@ -29,16 +29,16 @@ async function handleRawTxMessage(topic, message, unconfirmedTxToAddressArr, con
   }
 
   let affectedAddresses = [ ...inAddresses, ...outAddresses, ...sysTxAddresses ].filter((value, index, self) => {
-    if (!conn) {
+    if (!socket) {
       return self.indexOf(value) === index;
     } else {
-      return conn.syscoinAddress === value && self.indexOf(value) === index;
+      return socket.syscoinAddress === value && self.indexOf(value) === index;
     }
   });
 
-  if (!process.env.DEV && !conn) {
-    const prefix = conn ? '|| ' : '';
-    console.log(prefix + '>> ' + topic.toString('utf8') + ' conn:', conn ? conn.syscoinAddress : 'n/a');
+  if (!process.env.DEV && !socket) {
+    const prefix = socket ? '|| ' : '';
+    console.log(prefix + '>> ' + topic.toString('utf8') + ' socket:', socket ? socket.syscoinAddress : 'n/a');
     console.log(prefix + '>> ' + tx.txid);
   }
 
@@ -46,12 +46,12 @@ async function handleRawTxMessage(topic, message, unconfirmedTxToAddressArr, con
   affectedAddresses.forEach(address => {
     // see if we already have an entry for this address/tx
     if (!unconfirmedTxToAddressArr.find(entry => entry.address === address && entry.txid === tx.txid)) {
-      if (conn && conn.syscoinAddress === address) {
+      if (socket && socket.syscoinAddress === address) {
         unconfirmedTxToAddressArr.push({address, txid: tx.txid, tx: tx , hex: hexStr });
         console.log('|| UNCONFIRMED NOTIFY:', address, ' of ', tx.txid);
         const message = { tx, hex: hexStr };
-        conn.write(JSON.stringify({topic: 'unconfirmed', message }));
-      } else if (!conn) {
+        socket.emit(socket.syscoinAddress, JSON.stringify({topic: 'unconfirmed', message }));
+      } else if (!socket) {
         unconfirmedTxToAddressArr.push({address, txid: tx.txid, tx, hexStr: hexStr });
       }
     }
@@ -59,7 +59,7 @@ async function handleRawTxMessage(topic, message, unconfirmedTxToAddressArr, con
   return null;
 }
 
-async function handleHashBlockMessage(topic, message, unconfirmedTxToAddressArr, blockTxArr, conn) {
+async function handleHashBlockMessage(topic, message, unconfirmedTxToAddressArr, blockTxArr, socket) {
   let hash = message.toString('hex');
   let block = await rpcServices(client.callRpc).getBlock(hash).call();
   let removeArrCount = 0;
@@ -88,7 +88,7 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxToAddressArr,
   });
 
   // notify clients
-  if (conn) {
+  if (socket) {
     const flattenedNotificationList = {};
     toNotify.forEach(entry => {
       if (flattenedNotificationList[entry.address]) {
@@ -102,21 +102,21 @@ async function handleHashBlockMessage(topic, message, unconfirmedTxToAddressArr,
 
     Object.keys(flattenedNotificationList).forEach(key => {
       const entry = flattenedNotificationList[key];
-      if (conn && conn.syscoinAddress === key) {
-        if (entry[0].tx.systx && entry[0].tx.systx.txtype == 'assetallocationsend') {
-          var allocations = entry[0].tx.systx.allocations;
-          var memo = utils.getTransactionMemo(entry[0].tx);
-          conn.write(JSON.stringify({topic: 'confirmed', message: {txid: entry[0].txid, sender: entry[0].tx.systx.sender, receivers: entry[0].tx.systx.allocations, asset_guid: entry[0].tx.systx.asset_guid, amount: entry[0].tx.systx.total, memo: memo}}))
+      if (socket && socket.syscoinAddress === key) {
+        if (entry[0].tx.systx && entry[0].tx.systx.txtype === 'assetallocationsend') {
+          let allocations = entry[0].tx.systx.allocations;
+          let memo = utils.getTransactionMemo(entry[0].tx);
+          socket.emit(socket.syscoinAddress, JSON.stringify({topic: 'confirmed', message: {txid: entry[0].txid, sender: entry[0].tx.systx.sender, receivers: entry[0].tx.systx.allocations, asset_guid: entry[0].tx.systx.asset_guid, amount: entry[0].tx.systx.total, memo: memo}}))
         } else {
-          conn.write(JSON.stringify({topic: 'confirmed', message: entry[0].txid}));
+          socket.emit(socket.syscoinAddress, JSON.stringify({topic: 'confirmed', message: entry[0].txid}));
         }
       }
     });
   }
 
-  if (!process.env.DEV && !conn) {
-    const prefix = conn ? '|| ' : '';
-    console.log(prefix + '>> ' + topic.toString('utf8') + ' conn:', conn ? conn.syscoinAddress : 'n/a');
+  if (!process.env.DEV && !socket) {
+    const prefix = socket ? '|| ' : '';
+    console.log(prefix + '>> ' + topic.toString('utf8') + ' conn:', socket ? socket.syscoinAddress : 'n/a');
     console.log(prefix + '>> Block hash:' + block.hash);
     console.log(prefix + '>> Contains transactions:' + block.tx);
 
