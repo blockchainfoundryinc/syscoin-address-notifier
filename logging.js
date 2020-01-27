@@ -1,32 +1,31 @@
 const TOPIC = require('./message-topic');
-const {table} = require('table');
 
-function logState(addr, unconfirmed, blocks, connMap) {
+function logState(txData, connMap) {
 
-  const prefix = addr ? '|| ' : '';
+  const prefix = '';
   console.log(`${prefix}=====`);
   console.log("Connections");
   console.log(Object.keys(connMap));
+
   console.log("Address Maps");
-  Object.values(unconfirmed).forEach(entry => {
-    console.log(entry.address, entry.txid);
-  });  console.log("Block History");
-  Object.values(blocks).forEach(block => {
-    console.log(`${block.height} ${block.txs}`);
-  });
+  if(txData.unconfirmedTxToAddressArr.length > 0) {
+    Object.values(txData.unconfirmedTxToAddressArr).forEach(entry => {
+      console.log(entry.addresses, entry.txid, entry.status);
+    });
+  } else {
+    console.log('[]');
+  }
+
+  if(txData.blockTxArr.length > 0) {
+    console.log("Block History");
+    Object.values(txData.blockTxArr).forEach(block => {
+      console.log(`${block.height} ${block.txs}`);
+    });
+  } else {
+    console.log('[]');
+  }
+
   console.log(`${prefix}=====\n`);
-
-  /*
-    console.log(`${prefix}ADDRESS MAP`);
-    Object.values(addr).forEach(entry => {
-      console.log(prefix, entry.address, entry.txid);
-    });
-
-    console.log(`${prefix}BLOCK MAP`);
-    Object.values(blocks).forEach(block => {
-      console.log(`${prefix}${block.height} ${block.txs}`);
-    });
-    */
 }
 
 function handleDevLogging(sock) {
@@ -48,7 +47,6 @@ function handleDevLogging(sock) {
     });
   }
 }
-
 
 module.exports = {
   handleDevLogging,

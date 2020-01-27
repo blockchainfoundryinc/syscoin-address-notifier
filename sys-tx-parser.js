@@ -1,5 +1,6 @@
 const parseAddressesFromSysTx = (sysTx) => {
   const addresses = [];
+  // TODO: expand this case for all the systx types!
   switch (sysTx.txtype) {
     case 'assetallocationsend':
       addresses.push(sysTx.sender);

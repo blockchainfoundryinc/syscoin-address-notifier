@@ -1,17 +1,16 @@
-<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
 
 <script>
-  var sock = new SockJS('http://localhost:9999/zmq');
-  sock.onopen = function() {
-    console.log('open');
-    sock.send('test');
-  };
+  var socket = io('http://localhost:9999/', { query: "address=address123" });
+  socket.on('connect', function () {
+    console.log('connected');
+  });
 
-  sock.onmessage = function(e) {
-    console.log('message', e.data);
-  };
+  socket.on('disconnect', function () {
+    console.log('disconnect');
+  });
 
-  sock.onclose = function() {
-    console.log('close');
-  };
+  socket.on('address123', function (msg) {
+    console.log('address123', msg);
+  });
 </script>
