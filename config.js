@@ -8,8 +8,8 @@ module.exports = {
   rpc: {
     host: process.env.RPC_HOST || "localhost",
     rpcPort: process.env.RPC_PORT || 8368, // This is the port used in the docker-based integration tests, change at your peril
-    username: process.env.RPC_USER || "e7e1fea351c65ad2",
-    password: process.env.RPC_PASS || "17c6f164187e3ab2b7d3f594f010ab9d",
+    username: process.env.RPC_USER || "u",
+    password: process.env.RPC_PASS || "p",
     logLevel: process.env.LOG_LEVEL || 'error'
   }
 };
