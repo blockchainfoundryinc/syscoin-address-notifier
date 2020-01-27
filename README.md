@@ -1,4 +1,4 @@
-# Zdag Server
+# Syscoin Address Notifier
 This module listens to ZMQ messages from Syscoin Core and filter them and send them out via websocket to subscribers
 
 Pre-req
