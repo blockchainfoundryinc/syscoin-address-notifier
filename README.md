@@ -7,14 +7,22 @@ node, g++, make
 
 Installation
 ------------
-`git clone http://www.github.com/blockchainfoundryinc/syscoin-address-notifier`
-`cd syscoin-address-notifier`
-`npm install`
-`npm run start`
+```
+git clone http://www.github.com/blockchainfoundryinc/syscoin-address-notifier
+cd syscoin-address-notifier
+npm install
+npm run start
+```
 
 Configuration
 -------------
 RPC configurations are in both server.js and message-handler.js.
+
+Syscoin Core requires the following zmq configuration in syscoin.conf:
+```
+zmqpubrawblock=tcp://127.0.0.1:28332
+zmqpubrawtx=tcp://127.0.0.1:28332
+```
 
 Subscribing
 -----------
