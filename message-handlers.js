@@ -30,9 +30,8 @@ async function handleRawTxMessage(topic, message, txData, io) {
   let affectedAddresses = [ ...inAddresses, ...outAddresses, ...sysTxAddresses ];
   affectedAddresses = affectedAddresses.filter((a, b) => affectedAddresses.indexOf(a) === b);
 
-  if (!process.env.DEV && !socket) {
-    const prefix = socket ? '|| ' : '';
-    console.log(prefix + '>> ' + topic.toString('utf8') + ' socket:', socket ? socket.syscoinAddress : 'n/a');
+  if (!process.env.DEV) {
+    console.log(prefix + '>> ' + topic.toString('utf8'));
     console.log(prefix + '>> ' + tx.txid);
   }
 
