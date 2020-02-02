@@ -31,8 +31,8 @@ async function handleRawTxMessage(topic, message, txData, io) {
   affectedAddresses = affectedAddresses.filter((a, b) => affectedAddresses.indexOf(a) === b);
 
   if (!process.env.DEV) {
-    console.log(prefix + '>> ' + topic.toString('utf8'));
-    console.log(prefix + '>> ' + tx.txid);
+    console.log('>> ' + topic.toString('utf8'));
+    console.log('>> ' + tx.txid);
   }
 
   // map address to tx
