@@ -129,14 +129,13 @@ async function handleHashBlockMessage(topic, message, txData, io) {
     }
   });
 
-  if (!process.env.DEV && !socket) {
-    const prefix = socket ? '|| ' : '';
-    console.log(prefix + '>> ' + topic.toString('utf8') + ' conn:', socket ? socket.syscoinAddress : 'n/a');
-    console.log(prefix + '>> Block hash:' + block.hash);
-    console.log(prefix + '>> Contains transactions:' + block.tx);
+  if (!process.env.DEV) {
+    console.log('>> ' + topic.toString('utf8'));
+    console.log('>> Block hash:' + block.hash);
+    console.log('>> Contains transactions:' + block.tx);
 
     if (removedUnconfirmedTxCount > 0)
-      console.log(`${prefix} Removed ${removedUnconfirmedTxCount} ADDRESS entries`);
+      console.log(`Removed ${removedUnconfirmedTxCount} ADDRESS entries`);
   }
 
   return { unconfirmedTxToAddressArr: txData.unconfirmedTxToAddressArr, confirmedTxIds: txData.blockTxArr };
