@@ -41,6 +41,7 @@ module.exports = {
 };
 
 function dumpPendingMessagesToClient(socket) {
+  console.log('Dumping pending messages for:', socket.syscoinAddress);
   let pendingTxForSocket = [];
   txData.unconfirmedTxToAddressArr.forEach(entry => {
     if (entry.addresses.includes(socket.syscoinAddress)) {
