@@ -38,7 +38,8 @@ async function handleRawTxMessage(topic, message, txData, io) {
   // map address to tx
   affectedAddresses.forEach(address => {
     // see if we already have an entry for this address/tx
-    if (!txData.unconfirmedTxToAddressArr.find(entry => entry.txid === tx.txid)) {
+    const entryExists = txData.unconfirmedTxToAddressArr.find(entry => entry.txid === tx.txid);
+    if (!entryExists) {
       let payload = {addresses: affectedAddresses, txid: tx.txid, tx: tx , hex: hexStr };
       if(tx.systx) {
         payload = {
@@ -52,11 +53,11 @@ async function handleRawTxMessage(topic, message, txData, io) {
         payload.timeout = setTimeout(utils.checkSptTxStatus, config.zdag_check_time * 1000, payload, io);
       }
       txData.unconfirmedTxToAddressArr.push(payload);
+      console.log('|| UNCONFIRMED NOTIFY:', address, ' of ', tx.txid);
+      io.sockets.emit(address, JSON.stringify({topic: 'unconfirmed', message:  { tx, hex: hexStr } }));
     }
-
-    console.log('|| UNCONFIRMED NOTIFY:', address, ' of ', tx.txid);
-    io.sockets.emit(address, JSON.stringify({topic: 'unconfirmed', message:  { tx, hex: hexStr } }));
   });
+
   return null;
 }
 
@@ -64,6 +65,12 @@ async function handleHashBlockMessage(topic, message, txData, io) {
   let hash = message.toString('hex');
   let block = await rpc.getBlock(hash).call();
   let removedUnconfirmedTxCount = 0;
+
+  if (!process.env.DEV) {
+    console.log('>> ' + topic.toString('utf8'));
+    console.log('>> Block hash:' + block.hash);
+    console.log('>> Contains transactions:' + block.tx);
+  }
   
   //notify the hashblock channel of the event ahead of clients on lower-priority channels
   io.sockets.emit('hashblock', JSON.stringify({
@@ -138,10 +145,6 @@ async function handleHashBlockMessage(topic, message, txData, io) {
   });
 
   if (!process.env.DEV) {
-    console.log('>> ' + topic.toString('utf8'));
-    console.log('>> Block hash:' + block.hash);
-    console.log('>> Contains transactions:' + block.tx);
-
     if (removedUnconfirmedTxCount > 0)
       console.log(`Removed ${removedUnconfirmedTxCount} ADDRESS entries`);
   }
