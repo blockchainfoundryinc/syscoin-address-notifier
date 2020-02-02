@@ -64,6 +64,14 @@ async function handleHashBlockMessage(topic, message, txData, io) {
   let hash = message.toString('hex');
   let block = await rpc.getBlock(hash).call();
   let removedUnconfirmedTxCount = 0;
+  
+  //notify the hashblock channel of the event ahead of clients on lower-priority channels
+  io.sockets.emit('hashblock', JSON.stringify({
+    topic: 'hashblock',
+    message: {
+      blockhash: hash
+    }
+  }));
 
   // TRANSACTION MGMT
   // remove old txs from confirmed array
