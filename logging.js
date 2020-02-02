@@ -6,7 +6,7 @@ function logState(txData, connMap) {
   const indent = '  ';
   console.log(`${prefix}=====`);
   console.log("** Connections **");
-  console.log(Object.keys(connMap));
+  console.log(indent + Object.keys(connMap));
 
   console.log("** Address Maps **");
   if(txData.unconfirmedTxToAddressArr.length > 0) {
@@ -14,7 +14,7 @@ function logState(txData, connMap) {
       console.log(indent, entry.addresses, entry.txid, entry.status);
     });
   } else {
-    console.log(indent, '[]');
+    console.log(indent + '[]');
   }
 
   console.log("**  Block History **");
@@ -23,7 +23,7 @@ function logState(txData, connMap) {
       console.log(`${indent}${block.height} ${block.txs}`);
     });
   } else {
-    console.log(indent, '[]');
+    console.log(indent + '[]');
   }
 
   console.log(`${prefix}=====\n`);
