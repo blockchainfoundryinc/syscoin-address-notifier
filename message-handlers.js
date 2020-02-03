@@ -34,6 +34,7 @@ async function handleRawTxMessage(topic, message, txData, io) {
     const prefix = socket ? '|| ' : '';
     console.log(prefix + '>> ' + topic.toString('utf8') + ' socket:', socket ? socket.syscoinAddress : 'n/a');
     console.log(prefix + '>> ' + tx.txid);
+    console.log(prefix + '>> ' + affectedAddresses);
   }
 
   // map address to tx
