@@ -33,6 +33,7 @@ async function handleRawTxMessage(topic, message, txData, io) {
   if (!process.env.DEV) {
     console.log('>> ' + topic.toString('utf8'));
     console.log('>> ' + tx.txid);
+    console.log('>> ' + affectedAddresses);
   }
 
   // map address to tx
