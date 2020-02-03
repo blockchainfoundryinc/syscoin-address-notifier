@@ -36,30 +36,30 @@ async function handleRawTxMessage(topic, message, txData, io) {
     console.log('>> ' + affectedAddresses);
   }
 
-  // map address to tx
-  affectedAddresses.forEach(address => {
-    // see if we already have an entry for this address/tx
-    const entryExists = txData.unconfirmedTxToAddressArr.find(entry => entry.txid === tx.txid);
-    console.log('entry exists:', entryExists === undefined );
-    if (!entryExists) {
-      let payload = {addresses: affectedAddresses, txid: tx.txid, tx: tx , hex: hexStr };
-      if(tx.systx) {
-        payload = {
-          ...payload,
-          time: Date.now(),
-          status: null,
-          balances: [],
-          timeout: null
-        };
 
-        payload.timeout = setTimeout(utils.checkSptTxStatus, config.zdag_check_time * 1000, payload, io);
-      }
-      txData.unconfirmedTxToAddressArr.push(payload);
+
+  // see if we already have an entry for this tx
+  const entryExists = txData.unconfirmedTxToAddressArr.find(entry => entry.txid === tx.txid);
+  if (!entryExists) {
+    let payload = {addresses: affectedAddresses, txid: tx.txid, tx: tx , hex: hexStr };
+    if(tx.systx) {
+      payload = {
+        ...payload,
+        time: Date.now(),
+        status: null,
+        balances: [],
+        timeout: null
+      };
+
+      payload.timeout = setTimeout(utils.checkSptTxStatus, config.zdag_check_time * 1000, payload, io);
+
+      affectedAddresses.forEach(address => {
+        console.log('|| UNCONFIRMED NOTIFY:', address, ' of ', tx.txid);
+        io.sockets.emit(address, JSON.stringify({topic: 'unconfirmed', message:  { tx, hex: hexStr } }));
+      });
     }
-
-    console.log('|| UNCONFIRMED NOTIFY:', address, ' of ', tx.txid);
-    io.sockets.emit(address, JSON.stringify({topic: 'unconfirmed', message:  { tx, hex: hexStr } }));
-  });
+    txData.unconfirmedTxToAddressArr.push(payload);
+  }
 
   return null;
 }
