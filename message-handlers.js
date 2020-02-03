@@ -54,9 +54,10 @@ async function handleRawTxMessage(topic, message, txData, io) {
         payload.timeout = setTimeout(utils.checkSptTxStatus, config.zdag_check_time * 1000, payload, io);
       }
       txData.unconfirmedTxToAddressArr.push(payload);
-      console.log('|| UNCONFIRMED NOTIFY:', address, ' of ', tx.txid);
-      io.sockets.emit(address, JSON.stringify({topic: 'unconfirmed', message:  { tx, hex: hexStr } }));
     }
+
+    console.log('|| UNCONFIRMED NOTIFY:', address, ' of ', tx.txid);
+    io.sockets.emit(address, JSON.stringify({topic: 'unconfirmed', message:  { tx, hex: hexStr } }));
   });
 
   return null;
