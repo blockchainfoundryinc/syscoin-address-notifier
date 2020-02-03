@@ -40,7 +40,7 @@ async function handleRawTxMessage(topic, message, txData, io) {
   affectedAddresses.forEach(address => {
     // see if we already have an entry for this address/tx
     const entryExists = txData.unconfirmedTxToAddressArr.find(entry => entry.txid === tx.txid);
-    console.log('entry exists:', entryExists);
+    console.log('entry exists:', entryExists === undefined );
     if (!entryExists) {
       let payload = {addresses: affectedAddresses, txid: tx.txid, tx: tx , hex: hexStr };
       if(tx.systx) {
