@@ -58,11 +58,6 @@ Sample Output
 -------------
 **Address Channel `sys1q7vkc0zmjhd4njv56a3z6rp3em79kwrnzvk9mr3`:**
 
-For non-assetallocationsend transactions:
-```
-{"topic":"confirmed","message":"71d56b617b747e53d68c267650449d759447a37719efd1324dbad10609234e31"}
-```
-
 For assetallocationsend transactions there will be 3 messages per transaction:
 
 1. Unconfirmed transaction message
