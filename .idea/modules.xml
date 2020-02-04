@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/syscoin-address-notifier.iml" filepath="$PROJECT_DIR$/syscoin-address-notifier.iml" />
+      <module fileurl="file://$PROJECT_DIR$/syscoin-websocket.iml" filepath="$PROJECT_DIR$/syscoin-websocket.iml" />
     </modules>
   </component>
 </project>

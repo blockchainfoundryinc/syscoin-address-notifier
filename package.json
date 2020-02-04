@@ -1,6 +1,6 @@
 {
-  "name": "syscoin-address-notifier",
-  "version": "1.1.0",
+  "name": "syscoin-websocket",
+  "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
