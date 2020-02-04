@@ -89,8 +89,8 @@ For standard Syscoin transactions there will be 2 messages per transaction:
 
 2. Confirmed transaction message.
 ```
-{"topic":"confirmed","message":"adda096d16a732e9f84ad6190f07dca7bf366045d6e804980da372b8cf8ff28d"}"```
-
+{"topic":"confirmed","message":"adda096d16a732e9f84ad6190f07dca7bf366045d6e804980da372b8cf8ff28d"}"
+```
 
 **`hashblock` Channel:**
 ```
