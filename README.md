@@ -2,7 +2,7 @@
 Socket.io websocket server for surfacing realtime events from the Syscoin blockchain. Websocket subscribers can receive information about the following events:
 * New blocks
 * New unconfirmed transactions
-* Zdag events relative to SPT transactions
+* Zdag events related to SPT transactions
 * New confirmed transactions
 
 
