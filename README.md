@@ -41,7 +41,7 @@ const socket = io(url, { query: `address=sys1q7vkc0zmjhd4njv56a3z6rp3em79kwrnzvk
 ```
 
 ### Event Channels
-Clients can listen for `hashblock` channel for events or events specific to an address by subscribing to that address as a channel.
+Clients can listen for events by subscribing to a hashblock channel or an address-specific channel.
 
 _Subscribing to the `hashblock` channel:_
 ```
