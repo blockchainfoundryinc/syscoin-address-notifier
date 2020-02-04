@@ -30,35 +30,35 @@ async function handleRawTxMessage(topic, message, txData, io) {
   let affectedAddresses = [ ...inAddresses, ...outAddresses, ...sysTxAddresses ];
   affectedAddresses = affectedAddresses.filter((a, b) => affectedAddresses.indexOf(a) === b);
 
-  if (!process.env.DEV && !socket) {
-    const prefix = socket ? '|| ' : '';
-    console.log(prefix + '>> ' + topic.toString('utf8') + ' socket:', socket ? socket.syscoinAddress : 'n/a');
-    console.log(prefix + '>> ' + tx.txid);
-    console.log(prefix + '>> ' + affectedAddresses);
+  if (!process.env.DEV) {
+    console.log('>> ' + topic.toString('utf8'));
+    console.log('>> ' + tx.txid);
+    console.log('>> ' + affectedAddresses);
   }
 
-  // map address to tx
-  affectedAddresses.forEach(address => {
-    // see if we already have an entry for this address/tx
-    if (!txData.unconfirmedTxToAddressArr.find(entry => entry.txid === tx.txid)) {
-      let payload = {addresses: affectedAddresses, txid: tx.txid, tx: tx , hex: hexStr };
-      if(tx.systx) {
-        payload = {
-          ...payload,
-          time: Date.now(),
-          status: null,
-          balances: [],
-          timeout: null
-        };
+  // see if we already have an entry for this tx
+  const entryExists = txData.unconfirmedTxToAddressArr.find(entry => entry.txid === tx.txid);
+  if (!entryExists) {
+    let payload = {addresses: affectedAddresses, txid: tx.txid, tx: tx , hex: hexStr };
+    if(tx.systx) {
+      payload = {
+        ...payload,
+        time: Date.now(),
+        status: null,
+        balances: [],
+        timeout: null
+      };
 
-        payload.timeout = setTimeout(utils.checkSptTxStatus, config.zdag_check_time * 1000, payload, io);
-      }
-      txData.unconfirmedTxToAddressArr.push(payload);
+      payload.timeout = setTimeout(utils.checkSptTxStatus, config.zdag_check_time * 1000, payload, io);
+
+      affectedAddresses.forEach(address => {
+        console.log('|| UNCONFIRMED NOTIFY:', address, ' of ', tx.txid);
+        io.sockets.emit(address, JSON.stringify({topic: 'unconfirmed', message:  { tx, hex: hexStr } }));
+      });
     }
+    txData.unconfirmedTxToAddressArr.push(payload);
+  }
 
-    console.log('|| UNCONFIRMED NOTIFY:', address, ' of ', tx.txid);
-    io.sockets.emit(address, JSON.stringify({topic: 'unconfirmed', message:  { tx, hex: hexStr } }));
-  });
   return null;
 }
 
@@ -66,6 +66,20 @@ async function handleHashBlockMessage(topic, message, txData, io) {
   let hash = message.toString('hex');
   let block = await rpc.getBlock(hash).call();
   let removedUnconfirmedTxCount = 0;
+
+  if (!process.env.DEV) {
+    console.log('>> ' + topic.toString('utf8'));
+    console.log('>> Block hash:' + block.hash);
+    console.log('>> Contains transactions:' + block.tx);
+  }
+  
+  //notify the hashblock channel of the event ahead of clients on lower-priority channels
+  io.sockets.emit('hashblock', JSON.stringify({
+    topic: 'hashblock',
+    message: {
+      blockhash: hash
+    }
+  }));
 
   // TRANSACTION MGMT
   // remove old txs from confirmed array
@@ -131,14 +145,9 @@ async function handleHashBlockMessage(topic, message, txData, io) {
     }
   });
 
-  if (!process.env.DEV && !socket) {
-    const prefix = socket ? '|| ' : '';
-    console.log(prefix + '>> ' + topic.toString('utf8') + ' conn:', socket ? socket.syscoinAddress : 'n/a');
-    console.log(prefix + '>> Block hash:' + block.hash);
-    console.log(prefix + '>> Contains transactions:' + block.tx);
-
+  if (!process.env.DEV) {
     if (removedUnconfirmedTxCount > 0)
-      console.log(`${prefix} Removed ${removedUnconfirmedTxCount} ADDRESS entries`);
+      console.log(`Removed ${removedUnconfirmedTxCount} ADDRESS entries`);
   }
 
   return { unconfirmedTxToAddressArr: txData.unconfirmedTxToAddressArr, confirmedTxIds: txData.blockTxArr };

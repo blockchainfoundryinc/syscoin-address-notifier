@@ -41,6 +41,7 @@ module.exports = {
 };
 
 function dumpPendingMessagesToClient(socket) {
+  console.log('Dumping pending messages for:', socket.syscoinAddress);
   let pendingTxForSocket = [];
   txData.unconfirmedTxToAddressArr.forEach(entry => {
     if (entry.addresses.includes(socket.syscoinAddress)) {
@@ -91,14 +92,11 @@ function handleIoConnection(socket) {
   // associate client data with socket connection
   const address = socket.request._query['address'];
   console.log("client connected", socket.conn.id, address);
-  socket.syscoinAddress = address;
-  connectionMap[`${socket.syscoinAddress}-${socket.conn.id}`] = socket;
-
-  if (!socket.syscoinAddress) {
-    console.log('connection missing address data, kicking:', socket.request.url);
-    socket.disconnect();
+  if (address) {
+    socket.syscoinAddress = address;
   }
 
+  connectionMap[address ? `${socket.syscoinAddress}-${socket.conn.id}` : socket.conn.id] = socket;
   dumpPendingMessagesToClient(socket);
 
   socket.on('disconnect', function () {

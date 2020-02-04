@@ -3,26 +3,27 @@ const TOPIC = require('./message-topic');
 function logState(txData, connMap) {
 
   const prefix = '';
+  const indent = '  ';
   console.log(`${prefix}=====`);
-  console.log("Connections");
-  console.log(Object.keys(connMap));
+  console.log("** Connections **");
+  console.log(indent + Object.keys(connMap));
 
-  console.log("Address Maps");
+  console.log("** Address Maps **");
   if(txData.unconfirmedTxToAddressArr.length > 0) {
     Object.values(txData.unconfirmedTxToAddressArr).forEach(entry => {
-      console.log(entry.addresses, entry.txid, entry.status);
+      console.log(indent, entry.addresses, entry.txid, entry.status);
     });
   } else {
-    console.log('[]');
+    console.log(indent + '[]');
   }
 
+  console.log("**  Block History **");
   if(txData.blockTxArr.length > 0) {
-    console.log("Block History");
     Object.values(txData.blockTxArr).forEach(block => {
-      console.log(`${block.height} ${block.txs}`);
+      console.log(`${indent}${block.height} ${block.txs}`);
     });
   } else {
-    console.log('[]');
+    console.log(indent + '[]');
   }
 
   console.log(`${prefix}=====\n`);
