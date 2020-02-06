@@ -168,7 +168,7 @@ async function checkSptTxStatus(unconfirmedTxEntry, io) {
       balance: unconfirmedTxEntry.balances[address]
     };
     console.log('ZDAG UPDATE:', message.tx.txid, message.status, message.balance.symbol, message.balance.asset_guid, message.balance.balance, message.balance.balance_zdag);
-    io.sockets.emit(unconfirmedTxEntry.addresses[index], JSON.stringify({
+    io.to(unconfirmedTxEntry.addresses[index]).emit(unconfirmedTxEntry.addresses[index], JSON.stringify({
       topic: 'unconfirmed',
       message
     }));

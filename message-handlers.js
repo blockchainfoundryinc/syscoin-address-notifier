@@ -54,7 +54,7 @@ async function handleRawTxMessage(topic, message, txData, io) {
     txData.unconfirmedTxToAddressArr.push(payload);
     affectedAddresses.forEach(address => {
       console.log('|| UNCONFIRMED NOTIFY:', address, ' of ', tx.txid);
-      io.sockets.emit(address, JSON.stringify({topic: 'unconfirmed', message:  { tx, hex: hexStr } }));
+      io.to(address).emit(address, JSON.stringify({topic: 'unconfirmed', message:  { tx, hex: hexStr } }));
     });
   }
 
@@ -125,7 +125,7 @@ async function handleHashBlockMessage(topic, message, txData, io) {
     if (entry[0].tx.systx && entry[0].tx.systx.txtype === 'assetallocationsend') {
       let allocations = entry[0].tx.systx.allocations;
       let memo = utils.getTransactionMemo(entry[0].tx);
-      io.sockets.emit(key, JSON.stringify({
+      io.to(key).emit(key, JSON.stringify({
         topic: 'confirmed',
         message: {
           txid: entry[0].txid,
@@ -137,7 +137,7 @@ async function handleHashBlockMessage(topic, message, txData, io) {
         }
       }));
     } else {
-      io.sockets.emit(key, JSON.stringify({
+      io.to(key).emit(key, JSON.stringify({
         topic: 'confirmed',
         message: entry[0].txid
       }));
