@@ -93,6 +93,7 @@ function handleIoConnection(socket) {
   const address = socket.request._query['address'];
   console.log("client connected", socket.conn.id, address);
   if (address) {
+    socket.join(address);
     socket.syscoinAddress = address;
   }
 
