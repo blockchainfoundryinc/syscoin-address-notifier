@@ -18,7 +18,7 @@ if (config.use_ssl) {
     cert: fs.readFileSync(config.ssl_cert)
   };
   const app = require('https').createServer(options);
-  io = require('socket.io')(app);
+  io = require('socket.io').listen(app,{pingTimeout: 7000, pingInterval: 10000});
   app.listen(config.ws_port);
 } else {
   console.log('NOT USING SSL.');
