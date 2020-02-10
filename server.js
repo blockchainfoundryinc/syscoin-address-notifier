@@ -19,6 +19,7 @@ if (config.use_ssl) {
   };
   const app = require('https').createServer(options);
   io = require('socket.io')(app);
+  app.listen(config.ws_port);
 } else {
   console.log('NOT USING SSL.');
   io = require('socket.io')(config.ws_port);
