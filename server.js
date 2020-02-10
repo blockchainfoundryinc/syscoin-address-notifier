@@ -14,8 +14,8 @@ let io;
 if (config.use_ssl) {
   console.log('USING SSL.');
   const options = {
-    key: fs.readFileSync(config.ssl_key),
-    cert: fs.readFileSync(config.ssl_cert)
+    key: fs.readFileSync(config.ssl_key,  'utf-8'),
+    cert: fs.readFileSync(config.ssl_cert, 'utf-8')
   };
   const app = require('https').createServer(options);
   io = require('socket.io').listen(app,{pingTimeout: 7000, pingInterval: 10000});
