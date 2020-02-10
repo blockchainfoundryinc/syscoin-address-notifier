@@ -18,7 +18,7 @@ if (config.use_ssl) {
     cert: fs.readFileSync(config.ssl_cert, 'utf-8')
   };
   const app = require('https').createServer(options);
-  io = require('socket.io').listen(app);
+  io = require('socket.io')(app);
   app.listen(config.ws_port);
 } else {
   console.log('NOT USING SSL.');
