@@ -1,15 +1,26 @@
+const fs = require('fs');
 const zmq = require('zeromq');
 const sock = zmq.socket('sub');
 const { logState, handleDevLogging } = require('./logging');
 const messageHander = require('./message-handlers');
 const TOPIC = require('./message-topic');
 const config = require('./config');
-const io = require('socket.io')(config.ws_port);
 const txData = {
   unconfirmedTxToAddressArr: [],
   blockTxArr: []
 };
 let connectionMap = {};
+let io;
+if (config.use_ssl) {
+  const options = {
+    key: fs.readFileSync(config.ssl_key),
+    cert: fs.readFileSync(config.ssl_cert)
+  };
+  const app = require('https').createServer(options);
+  io = require('socket.io')(app);
+} else {
+  io = require('socket.io')(config.ws_port);
+}
 
 module.exports = {
   startServer(config = {zmq_address: null, ws_port: null},

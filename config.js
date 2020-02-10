@@ -11,5 +11,8 @@ module.exports = {
     username: process.env.RPC_USER || "u",
     password: process.env.RPC_PASS || "p",
     logLevel: process.env.LOG_LEVEL || 'error'
-  }
+  },
+  use_ssl: false,
+  ssl_key: '',
+  ssl_cert: ''
 };
