@@ -1,5 +1,6 @@
 const fs = require('fs');
 const zmq = require('zeromq');
+const express = require('express');
 const sock = zmq.socket('sub');
 const { logState, handleDevLogging } = require('./logging');
 const messageHander = require('./message-handlers');
@@ -17,9 +18,11 @@ if (config.use_ssl) {
     key: fs.readFileSync(config.ssl_key,  'utf-8'),
     cert: fs.readFileSync(config.ssl_cert, 'utf-8')
   };
-  const app = require('https').createServer(options);
-  io = require('socket.io')(app);
-  app.listen(config.ws_port);
+  const app = express();
+  app.use(express.static('public'));
+  const secureServer = require('https').createServer(options, app);
+  io = require('socket.io')(secureServer);
+  secureServer.listen(config.ws_port);
 } else {
   console.log('NOT USING SSL.');
   io = require('socket.io')(config.ws_port);
