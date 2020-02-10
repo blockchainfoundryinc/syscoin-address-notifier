@@ -12,6 +12,7 @@ const txData = {
 let connectionMap = {};
 let io;
 if (config.use_ssl) {
+  console.log('USING SSL.');
   const options = {
     key: fs.readFileSync(config.ssl_key),
     cert: fs.readFileSync(config.ssl_cert)
@@ -19,6 +20,7 @@ if (config.use_ssl) {
   const app = require('https').createServer(options);
   io = require('socket.io')(app);
 } else {
+  console.log('NOT USING SSL.');
   io = require('socket.io')(config.ws_port);
 }
 
