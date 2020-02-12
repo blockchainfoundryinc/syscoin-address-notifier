@@ -1,4 +1,4 @@
-# Syscoin Websocket
+# Syscoin Websocket Server
 Socket.io websocket server for surfacing realtime events from the Syscoin blockchain. Websocket subscribers can receive information about the following events:
 * New blocks
 * New unconfirmed transactions
@@ -34,7 +34,7 @@ zmqpubrawtx=tcp://127.0.0.1:28332
 
 Subscribing as a Client
 -----------
-Applications can subscribe to syscoin-websocket using [syscoin-websocket-client](https://github.com/blockchainfoundryinc/syscoin-websocket-client) (recommended) or any [socket.io client](https://github.com/socketio/socket.io-client). 
+Applications can subscribe to syscoin-websocket-server using [syscoin-websocket](https://github.com/blockchainfoundryinc/syscoin-websocket) (recommended) or any [socket.io client](https://github.com/socketio/socket.io-client). 
 When subscribing pass the query string parameter `address` to further identify concurrently connected clients.
 ```
 const socket = io(url, { query: `address=sys1q7vkc0zmjhd4njv56a3z6rp3em79kwrnzvk9mr3` });
