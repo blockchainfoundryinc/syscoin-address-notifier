@@ -6,8 +6,8 @@ const sysTxParser = require('./sys-tx-parser');
 const confirmedTxPruneHeight = 3; // number of blocks after which we discard confirmed tx data
 const rpc = utils.getRpc().rpc;
 
-async function handleRawTxMessage(topic, message, txData, io) {
-  let hexStr = message.toString('hex');
+async function handleRawTxMessage(topic, message, txData, io, isZdag, zdagMessage) {
+  let hexStr = isZdag ? zdagMessage.hex : message.toString('hex');
   let tx = bitcoin.Transaction.fromHex(hexStr);
 
   // get all the addresses associated w the transaction
@@ -36,8 +36,14 @@ async function handleRawTxMessage(topic, message, txData, io) {
     console.log('>> ' + affectedAddresses);
   }
 
+  if (isZdag) {
+    txData.unconfirmedTxToAddressArr.push({ ...zdagMessage, addresses: affectedAddresses });
+    return;
+  }
+
   // see if we already have an entry for this tx
   const entryExists = txData.unconfirmedTxToAddressArr.find(entry => entry.txid === tx.txid);
+
   if (!entryExists) {
     let payload = {addresses: affectedAddresses, txid: tx.txid, tx: tx , hex: hexStr };
     if(tx.systx) {
@@ -48,10 +54,11 @@ async function handleRawTxMessage(topic, message, txData, io) {
         balances: [],
         timeout: null
       };
-
-      payload.timeout = setTimeout(utils.checkSptTxStatus, config.zdag_check_time * 1000, payload, io);
+      
+      payload.timeout = setTimeout(utils.checkSptTxStatus, config.zdag_check_time * 1000, payload, txData, io);
     }
     txData.unconfirmedTxToAddressArr.push(payload);
+
     affectedAddresses.forEach(address => {
       console.log('|| UNCONFIRMED NOTIFY:', address, ' of ', tx.txid);
       io.to(address).emit(address, JSON.stringify({topic: 'unconfirmed', message:  { tx, hex: hexStr } }));

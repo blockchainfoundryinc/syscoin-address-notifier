@@ -3,7 +3,8 @@ const networks = require('./network.config').networks;
 const crypto = require('crypto');
 const config = require('./config');
 const rpcServices = require("@syscoin/syscoin-js").rpcServices;
-const SyscoinRpcClient = require("@syscoin/syscoin-js").SyscoinRpcClient;
+const SyscoinRpcClient = require('@syscoin/syscoin-js').SyscoinRpcClient;
+
 let rpc, client;
 
 function getInputAddressesFromVins(ins) {
@@ -147,34 +148,42 @@ function getTransactionMemo(txn) {
   return memo;
 }
 
-async function checkSptTxStatus(unconfirmedTxEntry, io) {
-  const assetAllocationVerifyZdag = await getRpc().rpc.assetAllocationVerifyZdag(unconfirmedTxEntry.txid).call();
-  unconfirmedTxEntry.status = assetAllocationVerifyZdag.status;
+async function checkSptTxStatus(unconfirmedTxEntry, txData, io) {
+  // Requiring once message-handlers has initialized.
+  const handleRawTxMessage = require('./message-handlers').handleRawTxMessage;
+  const utxEntry = { ...unconfirmedTxEntry }
+  const assetAllocationVerifyZdag = await getRpc().rpc.assetAllocationVerifyZdag(utxEntry.txid).call();
+  utxEntry.status = assetAllocationVerifyZdag.status;
 
   let assetAllocationInfoRequests = [];
-  unconfirmedTxEntry.addresses.forEach(address => {
-    assetAllocationInfoRequests.push(getRpc().rpc.assetAllocationInfo(unconfirmedTxEntry.tx.systx.asset_guid, address));
+  utxEntry.addresses.forEach(address => {
+    assetAllocationInfoRequests.push(getRpc().rpc.assetAllocationInfo(utxEntry.tx.systx.asset_guid, address));
   });
   let assetAllocationInfoResponses = await getRpc().client.batch(assetAllocationInfoRequests);
   assetAllocationInfoResponses.forEach((response, index) => {
-    const address = unconfirmedTxEntry.addresses[index];
-    unconfirmedTxEntry.balances[address] = response;
+    const address = utxEntry.addresses[index];
+    utxEntry.balances[address] = response;
 
     //broadcast zdag update to client
     const message = {
-      tx: unconfirmedTxEntry.tx,
-      hex: unconfirmedTxEntry.hex,
-      status: unconfirmedTxEntry.status,
-      balance: unconfirmedTxEntry.balances[address]
+      tx: utxEntry.tx,
+      hex: utxEntry.hex,
+      status: utxEntry.status,
+      balance: utxEntry.balances[address],
+      // Attaching balances for sending messages on websocket reconecction.
+      balances: utxEntry.balances,
+      isZDag: true
     };
     console.log('ZDAG UPDATE:', message.tx.txid, message.status, message.balance.symbol, message.balance.asset_guid, message.balance.balance, message.balance.balance_zdag);
-    io.to(unconfirmedTxEntry.addresses[index]).emit(unconfirmedTxEntry.addresses[index], JSON.stringify({
+    const newEntry = {
       topic: 'unconfirmed',
       message
-    }));
+    }
+    io.to(utxEntry.addresses[index]).emit(utxEntry.addresses[index], JSON.stringify(newEntry));
+    handleRawTxMessage('rawtx', newEntry.message.hex, txData, io, true, message);
   });
 
-  return unconfirmedTxEntry;
+  return utxEntry;
 }
 
 function getRpc() {

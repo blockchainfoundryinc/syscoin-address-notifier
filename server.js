@@ -60,7 +60,9 @@ module.exports = {
 function dumpPendingMessagesToClient(socket) {
   console.log('Dumping pending messages for:', socket.syscoinAddress);
   let pendingTxForSocket = [];
-  txData.unconfirmedTxToAddressArr.forEach(entry => {
+  // Sort and create some space between mewsages to make sure they arrive in correct order
+  let timer = 0;
+  txData.unconfirmedTxToAddressArr.sort((a, b) => b.time - a.time).forEach(entry => {
     if (entry.addresses.includes(socket.syscoinAddress)) {
       pendingTxForSocket.push(entry);
     }
@@ -81,10 +83,13 @@ function dumpPendingMessagesToClient(socket) {
         }
       }
 
-      socket.emit(socket.syscoinAddress, JSON.stringify({
-        topic: 'unconfirmed',
-        message
-      }));
+      setTimeout(() => {
+        socket.emit(socket.syscoinAddress, JSON.stringify({
+          topic: 'unconfirmed',
+          message
+        }));
+      }, timer);
+      timer += 500;
     });
   }
 }
