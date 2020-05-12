@@ -167,6 +167,7 @@ async function checkSptTxStatus(unconfirmedTxEntry, txData, io) {
     //broadcast zdag update to client
     const message = {
       tx: utxEntry.tx,
+      txid: utxEntry.tx.txid,
       hex: utxEntry.hex,
       status: utxEntry.status,
       balance: utxEntry.balances[address],
