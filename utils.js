@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const config = require('./config');
 const rpcServices = require("@syscoin/syscoin-js").rpcServices;
 const SyscoinRpcClient = require('@syscoin/syscoin-js').SyscoinRpcClient;
+const cloneDeep = require('lodash/cloneDeep')
 
 let rpc, client;
 
@@ -151,7 +152,7 @@ function getTransactionMemo(txn) {
 async function checkSptTxStatus(unconfirmedTxEntry, txData, io) {
   // Requiring once message-handlers has initialized.
   const handleRawTxMessage = require('./message-handlers').handleRawTxMessage;
-  const utxEntry = { ...unconfirmedTxEntry }
+  const utxEntry = cloneDeep(unconfirmedTxEntry)
   const assetAllocationVerifyZdag = await getRpc().rpc.assetAllocationVerifyZdag(utxEntry.txid).call();
   utxEntry.status = assetAllocationVerifyZdag.status;
 
