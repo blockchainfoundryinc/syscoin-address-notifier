@@ -60,7 +60,6 @@ async function handleRawTxMessage(topic, message, txData, io, isZdag, zdagMessag
         status: null,
         balances: [],
         timeout: null,
-
       };
       
       payload.timeout = setTimeout(utils.checkSptTxStatus, config.zdag_check_time * 1000, payload, txData, io);
@@ -106,7 +105,6 @@ async function handleHashBlockMessage(topic, message, txData, io) {
   let toNotify = [];
   let rejectedTxIds = [];
 
-
   // remove matching unconfirmed tx address entries
   txData.unconfirmedTxToAddressArr = txData.unconfirmedTxToAddressArr.filter(entry => {
     let txMatch = txData.blockTxArr.find(block => block.txs.find(txid => entry.txid === txid));
@@ -122,6 +120,7 @@ async function handleHashBlockMessage(topic, message, txData, io) {
       }
 
       if (isRejectedTransaction) {
+        console.log('Adding rejected tx:', entry.txid);
         rejectedTxIds.push(entry.txid);
       }
 
