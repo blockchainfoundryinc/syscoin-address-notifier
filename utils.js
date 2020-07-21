@@ -185,6 +185,8 @@ async function checkSptTxStatus(unconfirmedTxEntry, txData, io) {
     // handleRawTxMessage('rawtx', newEntry.message.hex, txData, io, true, message);
   });
 
+  unconfirmedTxEntry.status = utxEntry.status;
+
   return utxEntry;
 }
 
