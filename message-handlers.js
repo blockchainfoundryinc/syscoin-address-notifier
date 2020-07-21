@@ -45,7 +45,14 @@ async function handleRawTxMessage(topic, message, txData, io, isZdag, zdagMessag
   const entryExists = txData.unconfirmedTxToAddressArr.find(entry => entry.txid === tx.txid);
 
   if (!entryExists) {
-    let payload = {addresses: affectedAddresses, txid: tx.txid, tx: tx , hex: hexStr };
+    let payload = {
+      addresses: affectedAddresses,
+      txid: tx.txid,
+      tx: tx ,
+      hex: hexStr,
+      unconfirmedHeight: (await rpc.getBlockchainInfo().call()).blocks
+    };
+
     if(tx.systx) {
       payload = {
         ...payload,
@@ -53,7 +60,7 @@ async function handleRawTxMessage(topic, message, txData, io, isZdag, zdagMessag
         status: null,
         balances: [],
         timeout: null,
-        unconfirmedHeight: (await rpc.getBlockchainInfo().call()).blocks
+
       };
       
       payload.timeout = setTimeout(utils.checkSptTxStatus, config.zdag_check_time * 1000, payload, txData, io);
