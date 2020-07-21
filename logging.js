@@ -20,7 +20,8 @@ function logState(txData, connMap) {
   console.log("**  Block History **");
   if(txData.blockTxArr.length > 0) {
     Object.values(txData.blockTxArr).forEach(block => {
-      console.log(`${indent}${block.height} ${block.txs}`);
+      let shortTxIds = block.txs.map(txid => txid.substr(0,8));
+      console.log(`${indent}${block.height} ${shortTxIds}`);
     });
   } else {
     console.log(indent + '[]');
