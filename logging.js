@@ -11,7 +11,7 @@ function logState(txData, connMap) {
   console.log("** Address Maps **");
   if(txData.unconfirmedTxToAddressArr.length > 0) {
     Object.values(txData.unconfirmedTxToAddressArr).forEach(entry => {
-      console.log(indent, entry.addresses, entry.txid, entry.status);
+      console.log(indent, entry.addresses, entry.txid, entry.status, entry.unconfirmedHeight);
     });
   } else {
     console.log(indent + '[]');
