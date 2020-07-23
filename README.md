@@ -4,6 +4,7 @@ Socket.io websocket server for surfacing realtime events from the Syscoin blockc
 * New unconfirmed transactions
 * Z-DAG events related to SPT transactions (see [Z-DAG Developer Guide](https://syscoin.readme.io/docs/zdag-developer-guide))
 * New confirmed transactions
+* Rejected transactions
 
 
 Installation
@@ -19,12 +20,16 @@ npm run start
 
 Configuration
 -------------
-Configuration is controlled by `config.js` and can also be modified through environmental variables / `.env`.
+Configuration controlled by `config.js` and can also be modified through environmental variables / `.env`.
 
 * `zmq_address` -  Address ZMQ messages are published to by the local Syscoin RPC. Default: `tcp://127.0.0.1:28332`.
 * `ws_port` -  Port the websocket server will run on. Default: `9999`.
 * `zdag_check_time` - Z-DAG threshold time in seconds on a per-transaction basis. Default: `10`.
+* `rejected_tx_block_count` - Number of blocks to before marking a transaction as rejected. Default: `3`.
 * `rpc` - Configuration for local Syscoin RPC server.
+* `use_ssl` - Enable/disable SSL. Default: `false`.
+* `ssl_key` - Absolute path to SSL key file.
+* `ssl_cert` - Absolute path to SSL cert file.
 
 Syscoin Core requires the following zmq configuration in syscoin.conf:
 ```
@@ -47,6 +52,11 @@ Clients can listen for events by subscribing to a hashblock channel or an addres
 _Subscribing to the `hashblock` channel:_
 ```
 socket.on('hahsblock', function (msg) { ... });
+```
+
+_Subscribing to the `rejected_txs` channel:_
+```
+socket.on('rejected_txs', function (msg) { ... });
 ```
 
 _Subscribing to an address channel `sys1q7vkc0zmjhd4njv56a3z6rp3em79kwrnzvk9mr3`:_
@@ -90,4 +100,9 @@ For standard Syscoin transactions there will be 2 messages per transaction:
 **`hashblock` Channel:**
 ```
 {"topic":"hashblock","message":{"blockhash":"9d0b0e9072a8d1abb8b713868d0a37c1259e5d82329b30bdb505565a973e0978"}}
+```
+
+**`rejected_txs` Channel:**
+```
+{"topic":"rejected_txs","message":[adda096d16a732e9f84ad6190f07dca7bf366045d6e804980da372b8cf8ff28d]}
 ```
