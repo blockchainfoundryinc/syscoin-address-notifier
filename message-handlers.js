@@ -44,8 +44,8 @@ async function handleRawTxMessage(topic, message, txData, io, isZdag, zdagMessag
   // see if we already have an entry for this tx
   const entryExists = txData.unconfirmedTxToAddressArr.find(entry => entry.txid === tx.txid);
   let blockHeight = (await rpc.getBlockchainInfo().call())
-  console.log("Blocks:", blockHeight);
   blockHeight = blockHeight.blocks;
+  console.log("Current blockHeight:", blockHeight);
   if (!entryExists) {
     let payload = {
       addresses: affectedAddresses,
