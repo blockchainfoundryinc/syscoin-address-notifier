@@ -182,8 +182,10 @@ async function checkSptTxStatus(unconfirmedTxEntry, txData, io) {
       message
     }
     io.to(utxEntry.addresses[index]).emit(utxEntry.addresses[index], JSON.stringify(newEntry));
-    handleRawTxMessage('rawtx', newEntry.message.hex, txData, io, true, message);
+    // handleRawTxMessage('rawtx', newEntry.message.hex, txData, io, true, message);
   });
+
+  unconfirmedTxEntry.status = utxEntry.status;
 
   return utxEntry;
 }

@@ -43,16 +43,25 @@ async function handleRawTxMessage(topic, message, txData, io, isZdag, zdagMessag
 
   // see if we already have an entry for this tx
   const entryExists = txData.unconfirmedTxToAddressArr.find(entry => entry.txid === tx.txid);
-
+  let blockHeight = (await rpc.getBlockchainInfo().call())
+  blockHeight = blockHeight.blocks;
+  console.log("Current blockHeight:", blockHeight);
   if (!entryExists) {
-    let payload = {addresses: affectedAddresses, txid: tx.txid, tx: tx , hex: hexStr };
+    let payload = {
+      addresses: affectedAddresses,
+      txid: tx.txid,
+      tx: tx ,
+      hex: hexStr,
+      unconfirmedHeight: blockHeight
+    };
+
     if(tx.systx) {
       payload = {
         ...payload,
         time: Date.now(),
         status: null,
         balances: [],
-        timeout: null
+        timeout: null,
       };
       
       payload.timeout = setTimeout(utils.checkSptTxStatus, config.zdag_check_time * 1000, payload, txData, io);
@@ -96,16 +105,27 @@ async function handleHashBlockMessage(topic, message, txData, io) {
 
   // ADDRESS MGMT
   let toNotify = [];
+  let rejectedTxIds = [];
 
   // remove matching unconfirmed tx address entries
   txData.unconfirmedTxToAddressArr = txData.unconfirmedTxToAddressArr.filter(entry => {
     let txMatch = txData.blockTxArr.find(block => block.txs.find(txid => entry.txid === txid));
-    if (txMatch) {
+    let isRejectedTransaction = block.height > entry.unconfirmedHeight + config.rejected_tx_block_count;
+    if (txMatch || isRejectedTransaction) {
       removedUnconfirmedTxCount++;
-      toNotify.push(entry);
 
       // kill any intervals related to spt status check (zdag)
       clearTimeout(entry.timeout);
+
+      if (txMatch) {
+        toNotify.push(entry);
+      }
+
+      if (isRejectedTransaction) {
+        console.log('Adding rejected tx:', entry.txid);
+        rejectedTxIds.push(entry.txid);
+      }
+
       return false;
     } else {
       return true;
@@ -150,6 +170,17 @@ async function handleHashBlockMessage(topic, message, txData, io) {
       }));
     }
   });
+
+  //notify the rejected_txs channel of the event
+  if(rejectedTxIds.length > 0) {
+    console.log("Notifying of rejected txids: ", rejectedTxIds);
+    io.sockets.emit('rejected_txs', JSON.stringify({
+      topic: 'rejected_txs',
+      message: {
+        txids: rejectedTxIds
+      }
+    }));
+  }
 
   if (!process.env.DEV) {
     if (removedUnconfirmedTxCount > 0)
