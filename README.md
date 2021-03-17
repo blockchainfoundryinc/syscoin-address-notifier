@@ -9,7 +9,7 @@ Socket.io websocket server for surfacing realtime events from the Syscoin blockc
 
 Installation
 ------------
-Recommended node version: 12.x or higher.
+Recommended node version: 10.18.1 or higher.
 ```
 git clone http://www.github.com/blockchainfoundryinc/syscoin-websocket-server
 cd syscoin-websocket-server
