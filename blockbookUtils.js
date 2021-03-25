@@ -13,7 +13,7 @@ async function getAddress(address, batch = false) {
     result = await axiosInstance.get(`${config.blockbook_url}/api/v2/address/${address}`);
   }
 
-  console.log('Get address', address, 'result', result);
+  // console.log('Get address', address, 'result', result);
 
   return result;
 }

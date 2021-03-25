@@ -165,14 +165,21 @@ async function checkSptTxStatus(unconfirmedTxEntry, txData, io) {
   let results = {};
   let addressResponses = await axios.all(addressRequests);
   addressResponses.forEach((response, index) => {
-    console.log('address response', index, ' === ', response.data);
+    // console.log('address response', index, ' === ', response.data);
     const bbTokenData = response.data.tokens.find(tokenEntry => {
       // TODO: this won't work for multi asset txs but we can improve it later for that
       return tokenEntry.type === 'SPTAllocated' && tokenEntry.assetGuid === utxEntry.tx.systx.allocations[0].asset_guid;
     });
     const address = utxEntry.addresses[index];
-    utxEntry.balances[address] = bbTokenData.balance;
+    utxEntry.balances[address] = {
+      asset_guid: bbTokenData.assetGuid,
+      balance: bbTokenData.balance || 0,
+      balance_zdag: bbTokenData.unconfirmedBalance || 0,
+      balance_respendable: (bbTokenData.balance || 0) + (bbTokenData.unconfirmedBalance || 0)
+    };
+  });
 
+  utxEntry.addresses.forEach((address, index) => {
     //broadcast zdag update to client
     const message = {
       tx: utxEntry.tx,
@@ -180,19 +187,23 @@ async function checkSptTxStatus(unconfirmedTxEntry, txData, io) {
       hex: utxEntry.hex,
       status: utxEntry.status,
       balance: utxEntry.balances[address],
-      balance_zdag: bbTokenData.unconfirmedBalance || 0,
       // Attaching balances for sending messages on websocket reconecction.
       balances: utxEntry.balances,
       isZDag: true
     };
 
-    console.log('ZDAG UPDATE:', message.tx.txid, message.status, message.balance, message.balance.asset_guid, message.balance.balance, message.balance.balance_zdag);
+    console.log('ZDAG UPDATE:', message.tx.txid,
+      message.status,
+      message.balance,
+      message.balance.asset_guid,
+      message.balance.balance,
+      message.balance.balance_zdag,
+      message.balance.balance_respendable);
     const newEntry = {
       topic: 'unconfirmed',
       message
     }
     io.to(utxEntry.addresses[index]).emit(utxEntry.addresses[index], JSON.stringify(newEntry));
-    // handleRawTxMessage('rawtx', newEntry.message.hex, txData, io, true, message);
   });
 
   unconfirmedTxEntry.status = utxEntry.status;
