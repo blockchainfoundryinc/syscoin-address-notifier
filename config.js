@@ -1,5 +1,5 @@
 const dotenv = require('dotenv');
-dotenv.config({ silent: true });
+dotenv.config({ silent: false });
 
 module.exports = {
   zmq_address: process.env.ZMQ_ADDRESS || 'tcp://127.0.0.1:28332',
@@ -13,7 +13,9 @@ module.exports = {
     password: process.env.RPC_PASS || "p",
     logLevel: process.env.LOG_LEVEL || 'error'
   },
+  network: process.env.NETWORK || 'mainnet',
   use_ssl: process.env.USE_SSL || false,
   ssl_key: process.env.SSL_KEY || '',
-  ssl_cert: process.env.SSL_CERT  || ''
+  ssl_cert: process.env.SSL_CERT  || '',
+  blockbook_url: process.env.BLOCKBOOK_URL || 'https://sys1-testnet.bcfn.ca'
 };

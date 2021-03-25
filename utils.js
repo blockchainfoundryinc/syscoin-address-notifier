@@ -4,7 +4,9 @@ const crypto = require('crypto');
 const config = require('./config');
 const rpcServices = require("@syscoin/syscoin-js").rpcServices;
 const SyscoinRpcClient = require('@syscoin/syscoin-js').SyscoinRpcClient;
-const cloneDeep = require('lodash/cloneDeep')
+const cloneDeep = require('lodash/cloneDeep');
+const blockbook = require('./blockbookUtils');
+const axios = require('axios');
 
 let rpc, client;
 
@@ -14,7 +16,7 @@ function getInputAddressesFromVins(ins) {
     try {
       const p2sh = bitcoin.payments.p2sh({
         witness: input.witness,
-        network: networks.mainnet,
+        network: config.network === 'mainnet' ? networks.mainnet : networks.testnet,
         input: input.script
       });
 
@@ -25,7 +27,7 @@ function getInputAddressesFromVins(ins) {
       try {
         const p2wpkh = bitcoin.payments.p2wpkh({
           witness: input.witness,
-          network: networks.mainnet,
+          network: config.network === 'mainnet' ? networks.mainnet : networks.testnet,
           input: input.script
         });
 
@@ -45,7 +47,7 @@ function getOutputAddressesFromVouts(outs) {
   outs.forEach((out) => {
     let address;
     try {
-      address = bitcoin.address.fromOutputScript(out.script, networks.mainnet);
+      address = bitcoin.address.fromOutputScript(out.script, config.network === 'mainnet' ? networks.mainnet : networks.testnet);
     } catch (e) {
     }
 
@@ -151,19 +153,25 @@ function getTransactionMemo(txn) {
 
 async function checkSptTxStatus(unconfirmedTxEntry, txData, io) {
   // Requiring once message-handlers has initialized.
-  const handleRawTxMessage = require('./message-handlers').handleRawTxMessage;
+  // const handleRawTxMessage = require('./message-handlers').handleHashTxMessage;
   const utxEntry = cloneDeep(unconfirmedTxEntry)
   const assetAllocationVerifyZdag = await getRpc().rpc.assetAllocationVerifyZdag(utxEntry.txid).call();
   utxEntry.status = assetAllocationVerifyZdag.status;
 
-  let assetAllocationInfoRequests = [];
+  let addressRequests = [];
   utxEntry.addresses.forEach(address => {
-    assetAllocationInfoRequests.push(getRpc().rpc.assetAllocationInfo(utxEntry.tx.systx.asset_guid, address));
+    addressRequests.push(blockbook.getAddress(address, true));
   });
-  let assetAllocationInfoResponses = await getRpc().client.batch(assetAllocationInfoRequests);
-  assetAllocationInfoResponses.forEach((response, index) => {
+  let results = {};
+  let addressResponses = await axios.all(addressRequests);
+  addressResponses.forEach((response, index) => {
+    console.log('address response', index, ' === ', response.data);
+    const bbTokenData = response.data.tokens.find(tokenEntry => {
+      // TODO: this won't work for multi asset txs but we can improve it later for that
+      return tokenEntry.type === 'SPTAllocated' && tokenEntry.assetGuid === utxEntry.tx.systx.allocations[0].asset_guid;
+    });
     const address = utxEntry.addresses[index];
-    utxEntry.balances[address] = response;
+    utxEntry.balances[address] = bbTokenData.balance;
 
     //broadcast zdag update to client
     const message = {
@@ -172,11 +180,13 @@ async function checkSptTxStatus(unconfirmedTxEntry, txData, io) {
       hex: utxEntry.hex,
       status: utxEntry.status,
       balance: utxEntry.balances[address],
+      balance_zdag: bbTokenData.unconfirmedBalance || 0,
       // Attaching balances for sending messages on websocket reconecction.
       balances: utxEntry.balances,
       isZDag: true
     };
-    console.log('ZDAG UPDATE:', message.tx.txid, message.status, message.balance.symbol, message.balance.asset_guid, message.balance.balance, message.balance.balance_zdag);
+
+    console.log('ZDAG UPDATE:', message.tx.txid, message.status, message.balance, message.balance.asset_guid, message.balance.balance, message.balance.balance_zdag);
     const newEntry = {
       topic: 'unconfirmed',
       message

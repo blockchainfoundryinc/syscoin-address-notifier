@@ -15,6 +15,7 @@
     "@syscoin/syscoin-js": "^4.2.0",
     "@types/node": "^12.0.7",
     "arraync": "^1.0.1",
+    "axios": "^0.21.1",
     "bitcoinjs-lib": "^5.1.4",
     "crypto": "^1.0.1",
     "dotenv": "^8.0.0",

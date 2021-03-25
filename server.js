@@ -95,9 +95,10 @@ function dumpPendingMessagesToClient(socket) {
 }
 
 async function handleZmqSockMessage(topic, message) {
+  console.log('ZMQ:', topic.toString('utf8'));
   switch (topic.toString('utf8')) {
     case TOPIC.RAW_TX:
-      await messageHander.handleRawTxMessage(topic, message, txData, io);
+      await messageHander.handleHashTxMessage(topic, message, txData, io);
       logState(txData, connectionMap);
       break;
 

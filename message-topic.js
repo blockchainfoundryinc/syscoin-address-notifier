@@ -6,7 +6,7 @@ const TOPIC = {
   WALLET_STATUS: 'walletstatus',
   ETH_STATUS: 'ethstatus',
   NETWORK_STATUS: 'networkstatus',
-  WALLET_RAW_TX: 'walletrawtx'
+  WALLET_RAW_TX: 'walletrawtx',
 };
 
 module.exports = TOPIC;

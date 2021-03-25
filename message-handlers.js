@@ -1,13 +1,11 @@
 const bitcoin = require('bitcoinjs-lib');
 const utils = require('./utils');
-const printObject = require('print-object');
 const config = require('./config');
-const sysTxParser = require('./sys-tx-parser');
 const confirmedTxPruneHeight = 3; // number of blocks after which we discard confirmed tx data
 const rpc = utils.getRpc().rpc;
 
-async function handleRawTxMessage(topic, message, txData, io, isZdag, zdagMessage) {
-  let hexStr = isZdag ? zdagMessage.hex : message.toString('hex');
+async function handleHashTxMessage(topic, message, txData, io, isZdag, zdagMessage) {
+  const hexStr = message.toString('hex');
   let tx = bitcoin.Transaction.fromHex(hexStr);
 
   // get all the addresses associated w the transaction
@@ -23,11 +21,7 @@ async function handleRawTxMessage(topic, message, txData, io, isZdag, zdagMessag
     console.log("ERROR:", e);
   }
 
-  if (tx.systx) {
-    sysTxAddresses = sysTxParser.parseAddressesFromSysTx(tx.systx);
-  }
-
-  let affectedAddresses = [ ...inAddresses, ...outAddresses, ...sysTxAddresses ];
+  let affectedAddresses = [ ...inAddresses, ...outAddresses ];
   affectedAddresses = affectedAddresses.filter((a, b) => affectedAddresses.indexOf(a) === b);
 
   if (!process.env.DEV) {
@@ -49,6 +43,8 @@ async function handleRawTxMessage(topic, message, txData, io, isZdag, zdagMessag
   if (!entryExists) {
     let payload = {
       addresses: affectedAddresses,
+      inAddresses,
+      outAddresses,
       txid: tx.txid,
       tx: tx ,
       hex: hexStr,
@@ -191,7 +187,7 @@ async function handleHashBlockMessage(topic, message, txData, io) {
 }
 
 module.exports = {
-  handleRawTxMessage,
+  handleHashTxMessage,
   handleHashBlockMessage
 };
 
