@@ -32,7 +32,7 @@ async function handleHashTxMessage(topic, message, txData, io) {
     console.log('>> ' + affectedAddresses);
   }
 
-  if (isZdag) {
+  if (isRBF) {
     txData.unconfirmedTxToAddressArr.push({ ...zdagMessage, addresses: affectedAddresses });
     return;
   }
