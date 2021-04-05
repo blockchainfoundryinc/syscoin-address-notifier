@@ -1,15 +1,17 @@
-const bitcoin = require('bitcoinjs-lib');
+const bitcoin = require('syscoinjs-lib');
 const utils = require('./utils');
 const config = require('./config');
 const confirmedTxPruneHeight = 3; // number of blocks after which we discard confirmed tx data
 const rpc = utils.getRpc().rpc;
 
-async function handleHashTxMessage(topic, message, txData, io, isZdag, zdagMessage) {
+async function handleHashTxMessage(topic, message, txData, io) {
   const hexStr = message.toString('hex');
-  let tx = bitcoin.Transaction.fromHex(hexStr);
+  let tx = bitcoin.utils.bitcoinjs.Transaction.fromHex(hexStr);
+  console.log('tx', tx.systx);
 
   // get all the addresses associated w the transaction
   let sysTxAddresses = [];
+  let isRBF = utils.isRBF(tx.ins);
   let inAddresses = utils.getInputAddressesFromVins(tx.ins);
   let outAddresses = utils.getOutputAddressesFromVouts(tx.outs);
   try {

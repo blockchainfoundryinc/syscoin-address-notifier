@@ -219,6 +219,13 @@ function getRpc() {
   return {rpc, client};
 }
 
+// ref: https://www.reddit.com/r/Bitcoin/comments/41jgci/how_do_i_distinguish_or_detect_optin_rbf/
+function isRBF(vins) {
+  const isRBF = vins.filter(vin => vin.sequence < 4294967294).length > 0;
+  console.log('isRBF:', isRBF);
+  return isRBF;
+}
+
 module.exports = {
   getInputAddressesFromVins,
   getOutputAddressesFromVouts,
@@ -228,6 +235,7 @@ module.exports = {
   arrayToString,
   getTransactionMemo,
   getRpc,
-  checkSptTxStatus
+  checkSptTxStatus,
+  isRBF
 };
 
