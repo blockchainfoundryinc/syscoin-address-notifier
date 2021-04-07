@@ -1,4 +1,4 @@
-const bitcoin = require('syscoinjs-lib');
+const syscoin = require('syscoinjs-lib');
 const utils = require('./utils');
 const config = require('./config');
 const confirmedTxPruneHeight = 3; // number of blocks after which we discard confirmed tx data
@@ -6,8 +6,8 @@ const rpc = utils.getRpc().rpc;
 
 async function handleHashTxMessage(topic, message, txData, io) {
   const hexStr = message.toString('hex');
-  let tx = bitcoin.utils.bitcoinjs.Transaction.fromHex(hexStr);
-  console.log('tx', tx.systx);
+  let tx = syscoin.utils.bitcoinjs.Transaction.fromHex(hexStr);
+  const allocs = syscoin.utils.getAllocationsFromTx(tx)
 
   // get all the addresses associated w the transaction
   let sysTxAddresses = [];
@@ -53,7 +53,8 @@ async function handleHashTxMessage(topic, message, txData, io) {
       unconfirmedHeight: blockHeight
     };
 
-    if(tx.systx) {
+    if(allocs) {
+      console.log('ATTACHED SPTTXSTATUS')
       payload = {
         ...payload,
         time: Date.now(),
@@ -62,7 +63,7 @@ async function handleHashTxMessage(topic, message, txData, io) {
         timeout: null,
       };
       
-      payload.timeout = setTimeout(utils.checkSptTxStatus, config.zdag_check_time * 1000, payload, txData, io);
+      payload.timeout = setTimeout(utils.checkSptTxStatus, config.zdag_check_time * 1000, payload, allocs, io);
     }
     txData.unconfirmedTxToAddressArr.push(payload);
 
