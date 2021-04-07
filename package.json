@@ -23,7 +23,7 @@
     "https": "^1.0.0",
     "print-object": "^1.1.3",
     "socket.io": "^2.3.0",
-    "syscoinjs-lib": "^1.0.121",
+    "syscoinjs-lib": "^1.0.123",
     "table": "^5.4.6",
     "zeromq": "^5.1.0"
   },
