@@ -151,7 +151,7 @@ function getTransactionMemo(txn) {
   return memo;
 }
 
-async function checkSptTxStatus(unconfirmedTxEntry, txData, io) {
+async function checkSptTxStatus(unconfirmedTxEntry, allocs, io) {
   // Requiring once message-handlers has initialized.
   // const handleRawTxMessage = require('./message-handlers').handleHashTxMessage;
   const utxEntry = cloneDeep(unconfirmedTxEntry)
@@ -168,14 +168,14 @@ async function checkSptTxStatus(unconfirmedTxEntry, txData, io) {
     // console.log('address response', index, ' === ', response.data);
     const bbTokenData = response.data.tokens.find(tokenEntry => {
       // TODO: this won't work for multi asset txs but we can improve it later for that
-      return tokenEntry.type === 'SPTAllocated' && tokenEntry.assetGuid === utxEntry.tx.systx.allocations[0].asset_guid;
+      return tokenEntry.type === 'SPTAllocated' && tokenEntry.assetGuid === allocs[0].assetGuid;
     });
     const address = utxEntry.addresses[index];
     utxEntry.balances[address] = {
       asset_guid: bbTokenData.assetGuid,
       balance: bbTokenData.balance || 0,
       balance_zdag: bbTokenData.unconfirmedBalance || 0,
-      balance_respendable: (bbTokenData.balance || 0) + (bbTokenData.unconfirmedBalance || 0)
+      balance_respendable: ((Number(bbTokenData.balance) || 0) + (Number(bbTokenData.unconfirmedBalance) || 0)).toString()
     };
   });
 
