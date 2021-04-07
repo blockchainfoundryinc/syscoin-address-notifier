@@ -54,7 +54,6 @@ async function handleHashTxMessage(topic, message, txData, io) {
     };
 
     if(allocs) {
-      console.log('ATTACHED SPTTXSTATUS')
       payload = {
         ...payload,
         time: Date.now(),
